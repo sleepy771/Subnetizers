@@ -1,0 +1,6 @@
+[package]
+name = "mergeip"
+version = "0.1.0"
+authors = ["Filip Horňák <filip.hornak@comsource.cz>"]
+
+[dependencies]
