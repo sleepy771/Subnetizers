@@ -26,16 +26,6 @@ impl IPTree {
         let oct_3 = oct_2.get_or_create(ipv[2]).unwrap();
         oct_3.get_or_create(ipv[3]).unwrap();
     }
-
-    pub fn get_subnets(&self) -> Vec<([u8; 4], u8)>
-    {
-        let mut subnets: Vec<([u8; 4], u8)> = vec![];
-        for f_octet in self.addresses.values() {
-            let mut oct_subnets = f_octet.get_subnets_rec(&vec![], 8);
-            subnets.append(&mut oct_subnets);
-        }
-        subnets
-    }
 }
 
 impl GetOrCreateIP for IPTree {
@@ -130,11 +120,14 @@ impl IPOctet {
         prepared.push(self.number);
         let mut res: Vec<([u8;4], u8)> = Vec::new();
         for (octet, p_mask) in octet_subnets {
+            println!("Octet: {:?}, Mask: {:?}, Depth: {:?}", octet, p_mask, self.depth);
             if self.depth > 1 && p_mask == 8 {
                 let ip_octet = self.subnet.get(&octet).unwrap();
                 let mut subnet_res = ip_octet.get_subnets_rec(&prepared.clone(), mask + p_mask);
                 res.append(&mut subnet_res);
             } else {
+                println!("{:?}", octet);
+                println!("{:?}", prepared);
                 let mut ip_address: [u8;4] = [0; 4];
                 let mut k: usize = 0;
                 for poctet in prepared.clone() {
@@ -230,13 +223,14 @@ fn main() {
     tree.add_ipv4([192, 168, 1, 0]);
     tree.add_ipv4([192, 168, 1, 3]);
     tree.add_ipv4([192, 168, 1, 4]);
-    tree.add_ipv4([192, 168, 1, 5]);
-    tree.add_ipv4([192, 168, 1, 6]);
-    tree.add_ipv4([192, 168, 1, 7]);
-    tree.add_ipv4([192, 168, 1, 8]);
-    tree.add_ipv4([192, 168, 1, 9]);
-    tree.add_ipv4([192, 168, 1, 10]);
-    tree.add_ipv4([192, 168, 1, 11]);
-    tree.add_ipv4([192, 168, 1, 12]);
-    println!("{:?}", tree.get_subnets());
+//    tree.add_ipv4([192, 168, 1, 5]);
+//    tree.add_ipv4([192, 168, 1, 6]);
+//    tree.add_ipv4([192, 168, 1, 7]);
+//    tree.add_ipv4([192, 168, 1, 8]);
+//    tree.add_ipv4([192, 168, 1, 9]);
+//    tree.add_ipv4([192, 168, 1, 10]);
+//    tree.add_ipv4([192, 168, 1, 11]);
+//    tree.add_ipv4([192, 168, 1, 12]);
+    let a1 = tree.get_or_create(192).unwrap();
+    println!("{:?}", a1.get_subnets_rec(&vec![], 8));
 }
