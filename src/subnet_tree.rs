@@ -238,15 +238,6 @@ fn neighbor(subnet: u16) -> u16 {
 }
 
 
-fn empty_vec<T>(size: usize) -> Vec<Option<T>> {
-    let mut v = Vec::with_capacity(size);
-    for _ in 0 .. size {
-        v.push(None);
-    }
-    v
-}
-
-
 struct IPTree {
     octets: HashMap<u8, Box<OctetNode>>
 }
@@ -256,7 +247,7 @@ impl IPTree {
         if self.octets.contains_key(&octet) {
             return;
         }
-        self.octets.insert(octet, Box::new(StandardNode::new(octet, 2)));
+        self.octets.insert(octet, Box::new(StandardNode::new(octet, 1)));
     }
 
     pub fn get_node(&mut self, octet: u8) -> Option<&mut Box<OctetNode>> {
