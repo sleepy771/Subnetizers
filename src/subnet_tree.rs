@@ -24,7 +24,7 @@ pub struct StandardNode {
     subnodes: HashMap<u8, Box<OctetNode>>,
 }
 
-
+// TODO create better names
 impl StandardNode {
     pub fn new(octet: u8, level: u8) -> StandardNode {
         StandardNode {
@@ -68,6 +68,15 @@ impl StandardNode {
             }
         }
     }
+
+    fn _is_subnet(&self, octet: u8) -> bool {
+        match self.subnodes.get(&octet) {
+            Some(node) => node.is_subnet(),
+            None => {
+                self._has_subnet(octet as u16 + 256u16)
+            }
+        }
+    }
 }
 
 
@@ -85,6 +94,9 @@ impl OctetNode for StandardNode {
                     self.subnodes.insert(octet, Box::new(StandardNode::new(octet, self.level - 1)));
                 }
                 self._set_heap_bit(octet as u16 + 256u16);
+                if self._is_subnet(octet) && self._is_subnet(neighbor(octet as u16) as u8) {
+                    self._subnetize(octet as u16 + 256u16);   
+                }
             }
         }
     }
@@ -232,4 +244,22 @@ fn empty_vec<T>(size: usize) -> Vec<Option<T>> {
         v.push(None);
     }
     v
+}
+
+
+struct IPTree {
+    octets: HashMap<u8, Box<OctetNode>>
+}
+
+impl IPTree {
+    pub fn add(&mut self, octet: u8) -> () {
+        if self.octets.contains_key(&octet) {
+            return;
+        }
+        self.octets.insert(octet, Box::new(StandardNode::new(octet, 2)));
+    }
+
+    pub fn get_node(&mut self, octet: u8) -> Option<&mut Box<OctetNode>> {
+        self.octets.get_mut(&octet)
+    }
 }
