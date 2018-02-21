@@ -1,88 +1,235 @@
+use std::net::IpAddr;
+use std::collections::HashMap;
 
 
-struct IPAddress {
-    octets: [u8, 4];
+pub trait OctetNode {
+    fn add(&mut self, octet: u8) -> ();
+
+    fn get(&self) -> u8;
+
+    fn get_node(&mut self, octet: u8) -> Option<&mut Box<OctetNode>>;
+
+    fn get_cumulative_subnet(&self) -> u8;
+
+    fn contains(&self, octet: u8) -> bool;
+
+    fn is_subnet(&self) -> bool;
 }
 
-impl IPAddress {
-    pub fn new(adress: u32) -> IPAddress {
-        IPAddress { octets: u32to_octets(address) }
-    }
+
+pub struct StandardNode {
+    octet: u8,
+    level: u8,
+    subnets: [u64; 8],
+    subnodes: HashMap<u8, Box<OctetNode>>,
 }
 
-fn u32to_octets(adress: u32) -> [u8; 4] {
-    let mut octets: [u8; 4] = [0,0,0,0];
-    octets[0] = ((address >> 24) & 0xff) as u8;
-    octets[1] = ((address >> 16) & 0xff) as u8;
-    octets[2] = ((address >> 8) & 0xff) as u8;
-    octets[3] = (address & 0xff) as u8;
-    octets
-}
 
-struct IPOctet {
-    number: u8,
-    suboctets: HashMap<u8, IPOctet>,
-    heap: [u64; 8],
-    depth: u8
-}
-
-impl IPOctet {
-    pub fn new(octet: u8, depth: u8) -> IPOctet {
-        IPOctet {number: octet, suboctets: HashMap::new(), heap: [0,0,0,0,0,0,0,0], depth: depth}
-    }
-
-    pub fn add_octet(&mut self, octet: IPOctet) {
-        self._add_heap_index(calculate_heap_bit((256 + octet.number) as u16));
-        self.suboctets.insert(&octet.number, octet);
-        if self.depth == 0 || self.is_subnet() {
-            self._subnetize(octet.number);
+impl StandardNode {
+    pub fn new(octet: u8, level: u8) -> StandardNode {
+        StandardNode {
+            octet: octet,
+            level: level,
+            subnets: [0; 8],
+            subnodes: HashMap::new()
         }
     }
 
-    fn _add_heap_index(&mut self, idx: usize, bit_up: u64) {
-        self.number[idx] |= bit_up;
+    fn _has_subnet(&self, subnet: u16) -> bool {
+        let (idx, bit) = to_position(subnet).unwrap();
+        bit_set(self.subnets[idx], bit)
     }
 
-    fn _subnetize(&mut self, octet: u8) -> u16
-    {
-        let mut subnet = (octet.copy() + 255) as u16;
+    fn _set_heap_bit(&mut self, subnet: u16) {
+        let (idx, bit) = to_position(subnet).unwrap();
+        self.subnets[idx] |= bit;
+    }
 
-        while self._has_neighbor(subnet) {
-            subnet /= 2;
-            self._add_heap_index(subnet);
+    fn _unset_heap_bit(&mut self, subnet: u16) {
+        let (idx, bit) = to_position(subnet).unwrap();
+        let inv_bit = !bit;
+        self.subnets[idx] &= inv_bit;
+    }
+
+    fn _subnetize(&mut self, subnet: u16) {
+        let mut current_subnet = subnet;
+        loop {
+            let parent = current_subnet >> 1;
+            if self._has_subnet(current_subnet) && self._has_subnet(neighbor(current_subnet)) {
+                self._set_heap_bit(parent);
+                self._unset_heap_bit(current_subnet);
+                self._unset_heap_bit(neighbor(current_subnet));
+            } else {
+                break;
+            }
+            current_subnet = parent;
+            if parent < 1 {
+                break;
+            }
         }
-
-        subnet
-    }
-
-    fn _has_neighbor(&self, octet: u8) {
-        let neighbor = octet ^ 1;
-        self._has_octet(neighbor)
-    }
-
-    fn _has_octet(&self, octet: u8) -> bool {
-        let (idx, bit_up) = calculate_heap_bit(octet);
-        self.heap[idx] & bit_up == bit_up
-    }
-
-    pub fn is_subnet(&self) -> bool {
-        self.heap[0] & 1 == 1
-    }
-
-    fn _on_subnet(&mut self)
-    {
-        self.suboctets.clear();
-        self.depth = 0 as u8;
     }
 }
 
-fn calculate_heap_bit(subnet: u16) -> (usize, u64)
-{
-    let idx: usize = subnet/64;
-    let bit_up: u64 = 1 << (subnet & 0x3f);
-    (idx, bit_up)
+
+impl OctetNode for StandardNode {
+    fn add(&mut self, octet: u8) -> () {
+        if self._has_subnet(octet as u16 + 256u16) {
+            return;
+        }
+        match self.subnodes.get(&octet) {
+            Some(_) => {},
+            None => {
+                if self.level == 0 {
+                    self.subnodes.insert(octet, Box::new(LastNode::new(octet)));
+                } else {
+                    self.subnodes.insert(octet, Box::new(StandardNode::new(octet, self.level - 1)));
+                }
+                self._set_heap_bit(octet as u16 + 256u16);
+            }
+        }
+    }
+
+    fn get_node(&mut self, octet: u8) -> Option<&mut Box<OctetNode>> {
+        self.subnodes.get_mut(&octet)
+    }
+
+    fn get(&self) -> u8 {
+        self.octet
+    }
+
+    fn get_cumulative_subnet(&self) -> u8 {
+        8u8
+    }
+
+    fn contains(&self, octet: u8) -> bool {
+        self.subnodes.contains_key(&octet)
+    }
+
+    fn is_subnet(&self) -> bool {
+        for k in 0 .. 255 {
+            if !self.subnodes.contains_key(&k) {
+                return false;
+            }
+        }
+        true
+    }
 }
 
-struct IPTree {
-    octet_chains: HashMap<u8, IPOctet>
+
+pub struct LastNode {
+    octet: u8,
+    subnets: [u64; 8]
+}
+
+
+impl LastNode {
+    pub fn new(octet: u8) -> LastNode {
+        LastNode {
+            octet: octet,
+            subnets: [0u64; 8]
+        }
+    }
+
+    fn _has_subnet(&self, subnet: u16) -> bool {
+        let (idx, bit) = to_position(subnet).unwrap();
+        bit_set(self.subnets[idx], bit)
+    }
+
+    fn _set_heap_bit(&mut self, subnet: u16) {
+        let (idx, bit) = to_position(subnet).unwrap();
+        self.subnets[idx] |= bit;
+    }
+
+    fn _unset_heap_bit(&mut self, subnet: u16) {
+        let (idx, bit) = to_position(subnet).unwrap();
+        let inv_bit = !bit;
+        self.subnets[idx] &= inv_bit;
+    }
+
+    fn _subnetize(&mut self, subnet: u16) {
+        let mut current_subnet = subnet;
+        loop {
+            let parent = current_subnet >> 1;
+            if self._has_subnet(current_subnet) && self._has_subnet(neighbor(current_subnet)) {
+                self._set_heap_bit(parent);
+                self._unset_heap_bit(current_subnet);
+                self._unset_heap_bit(neighbor(current_subnet));
+            } else {
+                break;
+            }
+            current_subnet = parent;
+            if parent < 1 {
+                break;
+            }
+        }
+    }
+}
+
+
+impl OctetNode for LastNode {
+    fn add(&mut self, octet: u8) {
+        if self.contains(octet) {
+            return;
+        }
+        let (idx, bit) = to_position(octet as u16 + 256u16).unwrap();
+        self.subnets[idx] |= bit;
+        self._subnetize(octet as u16 + 256u16);
+    }
+
+    fn get(&self) -> u8 {
+        self.octet
+    }
+
+    fn get_node(&mut self, octet: u8) -> Option<&mut Box<OctetNode>> {
+        None
+    }
+
+    fn get_cumulative_subnet(&self) -> u8 {
+        8u8
+    }
+
+    fn contains(&self, octet: u8) -> bool {
+        let mut pos = octet as u16 + 256u16;
+        loop {
+            let (idx, bit) = to_position(pos).unwrap();
+            if bit_set(self.subnets[idx], bit) {
+                return true;
+            }
+            pos <<= 1;
+            if pos < 1 {
+                return false;
+            }
+        };
+    }
+
+    fn is_subnet(&self) -> bool {
+        2 == self.subnets[0]
+    }
+}
+
+
+fn to_position(octet: u16) -> Result<(usize, u64), &'static str> {
+    if octet > 512 {
+        return Err("Subnetized octet can not have value > 512!");
+    }
+    Ok(((octet / 64) as usize, (1u64 << (octet % 64)) as u64))
+}
+
+
+fn bit_set(bits: u64, flag: u64) -> bool {
+    bits & flag == flag
+}
+
+
+fn neighbor(subnet: u16) -> u16 {
+    subnet ^ 1
+}
+
+
+fn empty_vec<T>(size: usize) -> Vec<Option<T>> {
+    let mut v = Vec::with_capacity(size);
+    for _ in 0 .. size {
+        v.push(None);
+    }
+    v
 }

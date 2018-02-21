@@ -1,4 +1,14 @@
-[root]
+[[package]]
+name = "indextree"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "mergeip"
 version = "0.1.0"
+dependencies = [
+ "indextree 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
+[metadata]
+"checksum indextree 1.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7f4891aa1dfa3c697a4406e93d952d924b34664a040250a7d5e6a45290aaa6c0"
