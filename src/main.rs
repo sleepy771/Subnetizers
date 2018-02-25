@@ -1,5 +1,3 @@
-extern crate indextree;
-
 mod subnet_tree;
 
 use std::collections::HashMap;
