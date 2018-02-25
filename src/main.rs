@@ -4,62 +4,8 @@ mod subnet_tree;
 
 use std::collections::HashMap;
 
+use subnet_tree::{IPTree, OctetNode};
 
-trait GetOrCreateIP {
-    fn get_or_create(&mut self, octet: u8) -> Result<&mut IPOctet, &str>;
-}
-
-struct IPTree {
-    addresses: HashMap<u8, IPOctet>,
-    default_depth: u8
-}
-
-impl IPTree {
-    fn new(depth: u8) -> IPTree
-    {
-        IPTree { addresses: HashMap::new(), default_depth: depth }
-    }
-
-    fn new_ipv4_tree() -> IPTree {
-        IPTree::new(3)
-    }
-
-    pub fn add_ipv4<'a>(&mut self, ipv: [u8; 4]) {
-        let oct_1 = self.get_or_create(ipv[0]).unwrap();
-        {
-            let oct_2 = oct_1.get_or_create(ipv[1]).unwrap();
-            let oct_3 = oct_2.get_or_create(ipv[2]).unwrap();
-            oct_3.get_or_create(ipv[3]).unwrap();
-        }
-        let subnets: [u16; 4] = [ipv[0] as u16, ipv[1] as u16, ipv[2] as u16, ipv[3] as u16];
-
-        oct_1._subnet(&subnets);
-    }
-
-    pub fn get_subnets(&self) -> Vec<([u8; 4], u8)>
-    {
-        let mut subnets: Vec<([u8; 4], u8)> = vec![];
-        for f_octet in self.addresses.values() {
-            let mut oct_subnets = f_octet.get_subnets_rec(&vec![], 8);
-            subnets.append(&mut oct_subnets);
-        }
-        subnets
-    }
-}
-
-impl GetOrCreateIP for IPTree {
-    fn get_or_create(&mut self, octet: u8) -> Result<&mut IPOctet, &str>
-    {
-        if self.default_depth == 0 {
-            return Err(&"Bottom of chain reached")
-        }
-        if ! self.addresses.contains_key(&octet) {
-            let ip_octet = IPOctet::new(octet, self.default_depth);
-            self.addresses.insert(octet, ip_octet);
-        }
-        Ok(self.addresses.get_mut(&octet).unwrap())
-    }
-}
 
 #[derive(Debug, Clone)]
 struct IPOctet {
@@ -215,18 +161,6 @@ impl IPOctet {
     }
 }
 
-impl GetOrCreateIP for IPOctet {
-    fn get_or_create(&mut self, octet: u8) -> Result<&mut IPOctet, &str>
-    {
-        if self.depth < 1 {
-            return Err(&"Bottom of chain reached")
-        }
-        if ! self.subnet.contains_key(&octet) {
-            self.add_octet(octet);
-        }
-        Ok(self.subnet.get_mut(&octet).unwrap())
-    }
-}
 
 fn _heap_index_unsafe(octet: u16) -> (usize, u64)
 {
@@ -255,24 +189,66 @@ fn _calculate_neighbor(subnet: u16) -> u16
     subnet ^ 1
 }
 
+#[derive(Debug)]
+struct Node {
+    children: HashMap<u8, Node>,
+    octet: u8,
+}
+
+
+impl Node {
+    pub fn new(octet: u8) -> Node {
+        Node {
+            children: HashMap::new(),
+            octet: octet,
+        }
+    }
+
+    pub fn expand(&mut self, octet: u8) -> () {
+        self.children.insert(octet, Node::new(octet));
+    }
+
+    pub fn exists(&self, octet: &u8) -> bool {
+        self.children.contains_key(octet)
+    }
+
+    pub fn expand_leaf_and_inc(&mut self, octets: &[u8]) {
+        if octets.len() == 0 {
+            return;
+        }
+        if ! self.exists(&octets[0]) {
+            self.expand(octets[0].clone());
+        } 
+        self.children.get_mut(&octets[0]).unwrap().expand_leaf_and_inc(&octets[1..]);
+    }
+}
+
 
 fn main() {
-    let mut tree = IPTree::new_ipv4_tree();
-    for k in 0 .. 8 {
-        for i in 0 .. 256 {
-            tree.add_ipv4([192, 168, k as u8, i as u8])
+//    let mut tree = IPTree::new_ipv4_tree();
+//    for k in 0 .. 8 {
+//        for i in 0 .. 256 {
+//            tree.add_ipv4([192, 168, k as u8, i as u8])
+//        }
+//        tree.add_ipv4([192, 168, k, 1]);
+//    }
+//
+//    for (subnet, mask) in tree.get_subnets() {
+//        let subnet_address:String = subnet.iter().fold("".to_string(), |st, &oct| {
+//            if st == "".to_string() {
+//                format!("{}", oct)
+//            } else {
+//                format!("{}.{}", st, oct)
+//            }
+//        });
+//        println!("{}/{}", subnet_address, mask);
+//    }
+    let mut node = IPTree::new();
+    for j in 0 .. 4 {
+        for i in 0 .. 255 {
+            node.add(&[192, 168, j, i]);
         }
-        tree.add_ipv4([192, 168, k, 1]);
+        node.add(&[192, 168, j, 255]);
     }
-
-    for (subnet, mask) in tree.get_subnets() {
-        let subnet_address:String = subnet.iter().fold("".to_string(), |st, &oct| {
-            if st == "".to_string() {
-                format!("{}", oct)
-            } else {
-                format!("{}.{}", st, oct)
-            }
-        });
-        println!("{}/{}", subnet_address, mask);
-    }
+    println!("{}", node.get_node(&192).unwrap().get_node(&168).unwrap().get_node(&1).unwrap().is_subnet());
 }
