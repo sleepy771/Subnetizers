@@ -133,6 +133,9 @@ impl OctetNode for StandardNode {
     }
 
     fn contains(&self, octet: &u8) -> bool {
+        if self._is_subnet(octet.clone()) {
+            return true;
+        }
         self.subnodes.contains_key(octet)
     }
 
@@ -537,8 +540,27 @@ mod tests {
         };
         assert!(!node.subnodes.contains_key(&1));
         node.expand(1);
-        assert!(node.contains(&1));
         assert_eq!(node.subnets, [2, 0, 0, 0, 0, 0, 0, 0]);
         assert!(!node.subnodes.contains_key(&1));
+    }
+    
+    #[test]
+    fn test_StandardNode_contains() {
+        // test empty
+        let mut node = StandardNode::new(0, 0);
+        assert!(!node.contains(&1));
+        
+        // test after insertion
+        node.subnodes.insert(2, Box::new(LastNode::new(2)));
+        assert!(node.contains(&2));
+
+        // test subnetized
+        node = StandardNode {
+            octet: 0,
+            level: 0,
+            subnodes: HashMap::new(),
+            subnets: [2, 0, 0, 0, 0, 0, 0, 0]
+        };
+        assert!(node.contains(&2));
     }
 }

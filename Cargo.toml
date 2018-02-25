@@ -4,4 +4,3 @@ version = "0.1.0"
 authors = ["Filip Horňák <sleepy771@github.com>"]
 
 [dependencies]
-maplit = "1.0.1"
