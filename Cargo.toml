@@ -1,7 +1,6 @@
 [package]
 name = "mergeip"
 version = "0.1.0"
-authors = ["Filip Horňák <filip.hornak@comsource.cz>"]
+authors = ["Filip Horňák <sleepy771@github.com>"]
 
 [dependencies]
-indextree = "1.1.1"
