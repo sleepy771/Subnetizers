@@ -8,11 +8,7 @@ pub trait OctetNode {
 
     fn contains(&self, octet: &u8) -> bool;
 
-    fn get(&self) -> u8;
-
     fn get_node(&mut self, octet: &u8) -> Option<&mut Box<OctetNode>>;
-
-    fn get_cumulative_subnet(&self) -> u8;
 
     fn is_subnet(&self) -> bool;
 }
@@ -124,14 +120,6 @@ impl OctetNode for StandardNode {
         self.subnodes.get_mut(octet)
     }
 
-    fn get(&self) -> u8 {
-        self.octet
-    }
-
-    fn get_cumulative_subnet(&self) -> u8 {
-        8u8
-    }
-
     fn contains(&self, octet: &u8) -> bool {
         if self._is_subnet(octet.clone()) {
             return true;
@@ -236,16 +224,8 @@ impl OctetNode for LastNode {
         self._subnetize(octet as u16 + 256u16);
     }
 
-    fn get(&self) -> u8 {
-        self.octet
-    }
-
     fn get_node(&mut self, octet: &u8) -> Option<&mut Box<OctetNode>> {
         None
-    }
-
-    fn get_cumulative_subnet(&self) -> u8 {
-        8u8
     }
 
     fn contains(&self, octet: &u8) -> bool {
@@ -310,16 +290,8 @@ impl OctetNode for IPTree {
         self.octets.insert(octet, Box::new(StandardNode::new(octet, 1)));
     }
 
-    fn get(&self) -> u8 {
-        0u8
-    }
-
     fn get_node(&mut self, octet: &u8) -> Option<&mut Box<OctetNode>> {
         self.octets.get_mut(&octet)
-    }
-
-    fn get_cumulative_subnet(&self) -> u8 {
-        0u8
     }
 
     fn contains(&self, octet: &u8) -> bool {
