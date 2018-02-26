@@ -628,8 +628,12 @@ mod tests {
         node.add(&[0, 0]);
         assert!(node.subnodes.contains_key(&0));
         assert!(node.subnodes.get(&0).unwrap().contains(&0));
+    }
 
-        // Test carry over subnet bit
+    #[test]
+    fn test_StandardNode_add_subnet_carry_over() {
+        let mut node = StandardNode::new(0, 0);
+        node.add(&[0, 0]);
         node.add(&[0, 255]);
 
         for i in 1 .. 255 {
@@ -637,5 +641,6 @@ mod tests {
         }
         assert_eq!(node.subnets, [0, 0, 0, 0, 1, 0, 0, 0]);
         assert!(!node.subnodes.contains_key(&0));
+
     }
 }
