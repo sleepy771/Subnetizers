@@ -641,6 +641,23 @@ mod tests {
         }
         assert_eq!(node.subnets, [0, 0, 0, 0, 1, 0, 0, 0]);
         assert!(!node.subnodes.contains_key(&0));
+    }
 
+    #[test]
+    fn test_StandardNode_add_multipl_subnets() {
+        let mut node = StandardNode::new(0, 0);
+        for j in 0 .. 4 {
+            node.add(&[j, 0]);
+            node.add(&[j, 255]);
+
+            for i in 1 .. 255 {
+                node.add(&[j, i]);
+            }
+        }
+        assert_eq!(node.subnets, [0, 1, 0, 0, 0, 0, 0, 0]);
+        assert!(!node.subnodes.contains_key(&0));
+        assert!(!node.subnodes.contains_key(&1));
+        assert!(!node.subnodes.contains_key(&2));
+        assert!(!node.subnodes.contains_key(&3));
     }
 }
