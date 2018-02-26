@@ -14,38 +14,6 @@ struct IPOctet {
 }
 
 impl IPOctet {
-    pub fn new(octet: u8, depth: u8) -> IPOctet
-    {
-        IPOctet {
-            number: octet,
-            subnet: HashMap::new(),
-            heap: [0; 8],
-            depth: depth
-        }
-    }
-
-    pub fn add(&mut self, octet: IPOctet) -> bool
-    {
-        match self._has_subnet(octet.number as u16 + 256) {
-            true => false,
-            false => {
-                let octet_pos = octet.number as u16 + 256u16;
-                self._set_heap_bit(octet_pos);
-                self._subnetize(octet_pos);
-                self.subnet.insert(octet.number, octet);
-                true
-            }
-        }
-    }
-
-    pub fn add_octet(&mut self, octet: u8) -> bool
-    {
-        if self.depth == 0 {
-            return false
-        }
-        let octet_depth = self.depth - 1;
-        self.add(IPOctet::new(octet, octet_depth))
-    }
 
     fn _subnetize(&mut self, subnet: u16)
     {
@@ -138,6 +106,7 @@ impl IPOctet {
 
     pub fn is_subnet(&self) -> bool
     {
+        // This is some advanced code (expanding mind).
         return self.heap[0] & 2 == 2
     }
 
@@ -162,6 +131,7 @@ impl IPOctet {
 
 fn _heap_index_unsafe(octet: u16) -> (usize, u64)
 {
+    // because `something / 64` & `something % 64` is too mainstream
     let idx = (octet >> 6) as usize;
     let bit = 1 << (octet & 0x3f);
     (idx, bit)
@@ -169,6 +139,7 @@ fn _heap_index_unsafe(octet: u16) -> (usize, u64)
 
 fn _partially_calculate_subnet(subnet_bit: u16) -> (u8, u8)
 {
+    // This is actually madness.
     let partial_mask: u8 = (_floor_log2(subnet_bit as u64) - 1) as u8;
     let highest_bounded_power_of_2 = 1 << partial_mask;
     let mult = 256 >> partial_mask; // 256 / mask
@@ -186,41 +157,6 @@ fn _calculate_neighbor(subnet: u16) -> u16
 {
     subnet ^ 1
 }
-
-#[derive(Debug)]
-struct Node {
-    children: HashMap<u8, Node>,
-    octet: u8,
-}
-
-
-impl Node {
-    pub fn new(octet: u8) -> Node {
-        Node {
-            children: HashMap::new(),
-            octet: octet,
-        }
-    }
-
-    pub fn expand(&mut self, octet: u8) -> () {
-        self.children.insert(octet, Node::new(octet));
-    }
-
-    pub fn exists(&self, octet: &u8) -> bool {
-        self.children.contains_key(octet)
-    }
-
-    pub fn expand_leaf_and_inc(&mut self, octets: &[u8]) {
-        if octets.len() == 0 {
-            return;
-        }
-        if ! self.exists(&octets[0]) {
-            self.expand(octets[0].clone());
-        } 
-        self.children.get_mut(&octets[0]).unwrap().expand_leaf_and_inc(&octets[1..]);
-    }
-}
-
 
 fn main() {
 //    let mut tree = IPTree::new_ipv4_tree();
