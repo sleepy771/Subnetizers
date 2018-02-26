@@ -241,12 +241,13 @@ fn main() {
 //        });
 //        println!("{}/{}", subnet_address, mask);
 //    }
-    let mut node = IPTree::new();
-    for j in 0 .. 4 {
-        for i in 0 .. 255 {
-            node.add(&[192, 168, j, i]);
-        }
-        node.add(&[192, 168, j, 255]);
-    }
-    println!("{}", node.get_node(&192).unwrap().get_node(&168).unwrap().get_node(&1).unwrap().is_subnet());
+//    let mut node = IPTree::new();
+//    for j in 0 .. 4 {
+//        for i in 0 .. 255 {
+//            node.add(&[192, 168, j, i]);
+//        }
+//        node.add(&[192, 168, j, 255]);
+//    }
+//    println!("{}", node.get_node(&192).unwrap().get_node(&168).unwrap().get_node(&1).unwrap().is_subnet());
+    println!("{}", (!1i64 | 1i64) + 1i64);
 }

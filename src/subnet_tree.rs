@@ -140,13 +140,34 @@ impl OctetNode for StandardNode {
     }
 
     fn is_subnet(&self) -> bool {
+        // TODO this method is pretty much unoptimised
         for k in 0 .. 255 {
-            if !self.subnodes.contains_key(&k) {
+            if !self._is_subnet(k) {
                 return false;
             }
         }
-        true
+        self._is_subnet(255)
     }
+}
+
+fn get_subnetized_octets(subnets: &[u64; 8]) -> [u64; 4] {
+    let mut octets: [u64; 8] = subnets.clone();
+    for i in 0 .. 256 {
+        let (parent_idx, parent_bit) = to_position(i).unwrap();
+        if bit_set(subnets[parent_idx], parent_bit) {
+            let (left_idx, left_bit) = to_position(i * 2).unwrap();
+            let (right_idx, right_bit) = to_position(i * 2 + 1).unwrap();
+            octets[left_idx] |= left_bit;
+            octets[right_idx] |= right_bit;
+        }
+    }
+    let mut result: [u64; 4] = [0; 4];
+    result.copy_from_slice(&octets[4..]);
+    result
+}
+
+fn invert_assigned_octets(octets: &[u64; 4]) -> [u64; 4] {
+    [!octets[0], !octets[1], !octets[2], !octets[3]] 
 }
 
 #[derive(Debug)]
@@ -562,5 +583,59 @@ mod tests {
             subnets: [2, 0, 0, 0, 0, 0, 0, 0]
         };
         assert!(node.contains(&2));
+    }
+
+    #[test]
+    fn test_StandardNode_is_subnet() {
+        // simple test wihtout subnets
+        let mut node = StandardNode::new(0,0);
+        assert!(!node.is_subnet());
+
+        // not all octets are subnets yet
+        for i in 0 .. 255 {
+            node.subnodes.insert(i, Box::new(LastNode {
+                octet: i,
+                subnets: [2, 0, 0, 0, 0, 0, 0, 0]
+            }));
+        };
+        assert!(!node.is_subnet());
+
+        // all octets are subnets
+        node.subnodes.insert(255, Box::new(LastNode {
+            octet: 255,
+            subnets: [2, 0, 0, 0, 0, 0, 0, 0]
+        }));
+        assert!(node.is_subnet());
+
+        // node is subnet
+        node = StandardNode {
+            octet: 0,
+            level: 0,
+            subnodes: HashMap::new(),
+            subnets: [2, 0, 0, 0, 0, 0, 0, 0]
+        };
+        assert!(node.is_subnet());
+
+        // TODO create some advanced (mixed) test.
+        // TODO split tests to multiple functions, so fixing would be easier.
+    }
+
+    #[test]
+    fn test_StandardNode_add () {
+        // Most important test.
+        // Test add 2 octets in tree.
+        let mut node = StandardNode::new(0, 0);
+        node.add(&[0, 0]);
+        assert!(node.subnodes.contains_key(&0));
+        assert!(node.subnodes.get(&0).unwrap().contains(&0));
+
+        // Test carry over subnet bit
+        node.add(&[0, 255]);
+
+        for i in 1 .. 255 {
+            node.add(&[0, i]);
+        }
+        assert_eq!(node.subnets, [0, 0, 0, 0, 1, 0, 0, 0]);
+        assert!(!node.subnodes.contains_key(&0));
     }
 }
