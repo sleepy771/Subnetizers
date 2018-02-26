@@ -4,8 +4,6 @@ use std::collections::HashMap;
 pub trait OctetNode {
     fn add(&mut self, octets: &[u8]) -> ();
 
-    fn expand(&mut self, octet: u8) -> ();
-
     fn contains(&self, octet: &u8) -> bool;
 
     fn get_node(&mut self, octet: &u8) -> Option<&mut Box<OctetNode>>;
@@ -81,6 +79,22 @@ impl StandardNode {
             }
         };
     }
+
+    fn expand(&mut self, octet: u8) -> () {
+        if self._is_subnet(octet) {
+            return;
+        }
+        match self.subnodes.get(&octet) {
+            Some(_) => {},
+            None => {
+                if self.level == 0 {
+                    self.subnodes.insert(octet, Box::new(LastNode::new(octet)));
+                } else {
+                    self.subnodes.insert(octet, Box::new(StandardNode::new(octet, self.level - 1)));
+                }
+            }
+        }
+    }
 }
 
 impl OctetNode for StandardNode {
@@ -97,22 +111,6 @@ impl OctetNode for StandardNode {
                 self._subnetize(octet[0] as u16 + 256u16);   
             }
             self.subnodes.remove(&octet[0]);
-        }
-    }
-
-    fn expand(&mut self, octet: u8) -> () {
-        if self._is_subnet(octet) {
-            return;
-        }
-        match self.subnodes.get(&octet) {
-            Some(_) => {},
-            None => {
-                if self.level == 0 {
-                    self.subnodes.insert(octet, Box::new(LastNode::new(octet)));
-                } else {
-                    self.subnodes.insert(octet, Box::new(StandardNode::new(octet, self.level - 1)));
-                }
-            }
         }
     }
 
@@ -205,15 +203,6 @@ impl LastNode {
             }
         }
     }
-}
-
-impl OctetNode for LastNode {
-    fn add(&mut self, octets: &[u8]) {
-        if octets.len() > 1 {
-            return;
-        }
-        self.expand(octets[0]);
-    }
 
     fn expand(&mut self, octet: u8) -> () {
         if self.contains(&octet) {
@@ -222,6 +211,15 @@ impl OctetNode for LastNode {
         let (idx, bit) = to_position(octet as u16 + 256u16).unwrap();
         self.subnets[idx] |= bit;
         self._subnetize(octet as u16 + 256u16);
+    }
+}
+
+impl OctetNode for LastNode {
+    fn add(&mut self, octets: &[u8]) {
+        if octets.len() > 1 {
+            return;
+        }
+        self.expand(octets[0]);
     }
 
     fn get_node(&mut self, octet: &u8) -> Option<&mut Box<OctetNode>> {
@@ -272,6 +270,13 @@ impl IPTree {
             octets: HashMap::new()
         }
     }
+
+    fn expand(&mut self, octet: u8) -> () {
+        if self.octets.contains_key(&octet) {
+            return;
+        }
+        self.octets.insert(octet, Box::new(StandardNode::new(octet, 1)));
+    }
 }
 
 impl OctetNode for IPTree {
@@ -281,13 +286,6 @@ impl OctetNode for IPTree {
         }
         self.expand(octet[0]);
         self.octets.get_mut(&octet[0]).unwrap().add(&octet[1..]);
-    }
-
-    fn expand(&mut self, octet: u8) -> () {
-        if self.octets.contains_key(&octet) {
-            return;
-        }
-        self.octets.insert(octet, Box::new(StandardNode::new(octet, 1)));
     }
 
     fn get_node(&mut self, octet: &u8) -> Option<&mut Box<OctetNode>> {
