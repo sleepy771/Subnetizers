@@ -685,14 +685,4 @@ mod tests {
         assert_eq!(calculate_subnet(511), Ok((255, 8))); 
         assert_eq!(calculate_subnet(256), Ok((0, 8))); 
     }
-
-    #[test]
-    fn test_LastNode_list() {
-        let mut node = LastNode::new(0);
-        node.add(&[1]);
-        node.add(&[2]);
-        node.add(&[3]);
-
-        assert_eq!(node.list(), vec![(2, 7), (1, 8)]);
-    }
 }
