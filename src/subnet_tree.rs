@@ -10,7 +10,7 @@ pub trait OctetNode {
 
     fn is_subnet(&self) -> bool;
 
-    fn list(&self) -> Vec<(u8, u8)>;
+    fn recursive_list(&self, prefix: u32, prefix_length: u8) -> Vec<(u32, u8)>;
 }
 
 pub struct StandardNode {
@@ -45,6 +45,14 @@ impl StandardNode {
         let (idx, bit) = to_position(subnet).unwrap();
         let inv_bit = !bit;
         self.subnets[idx] &= inv_bit;
+    }
+
+    fn _has_empty_subnets(&self) -> bool {
+        let mut subnets = 0u64;
+        for i in 0 .. 8 {
+            subnets |= self.subnets[i];
+        }
+        subnets == 0u64
     }
 
     fn _subnetize(&mut self, subnet: u16) {
@@ -137,9 +145,39 @@ impl OctetNode for StandardNode {
         self._is_subnet(255)
     }
 
-    fn list(&self) -> Vec<(u8,u8)> {
-        vec![]
+    fn recursive_list(&self, prefix: u32, prefix_length: u8) -> Vec<(u32, u8)> {
+        let mut prefix_vector: Vec<(u32, u8)> = Vec::new();
+        let inner_prefix = prefix | ((self.octet as u32) << (32 - (prefix_length + 8)));
+        for node in self.subnodes.values() {
+            prefix_vector.append(&mut node.recursive_list(inner_prefix, prefix_length + 8));
+        }
+
+        if ! self._has_empty_subnets() {
+            prefix_vector.append(&mut make_cidr(inner_prefix, prefix_length + 8, &self.subnets));
+        }
+
+        prefix_vector
     }
+}
+
+fn make_cidr(prefix: u32, prefix_length: u8, subnets: &[u64; 8]) -> Vec<(u32, u8)> {
+    let mut ips: Vec<(u32, u8)> = Vec::new();
+    for i in 1 .. 511 {
+        let (idx, bit) = to_position(i).unwrap();
+        if bit_set(subnets[idx], bit) {
+            let (octet, p_mask) = _calculate_partial_cidr(i);
+            ips.push((prefix | octet as u32, prefix_length + p_mask));
+        }
+    }
+    ips
+}
+
+fn _calculate_partial_cidr(cidr_bit: u16) -> (u8, u8) {
+    let partial_mask: u8 = floor_log2(cidr_bit as u64).unwrap();
+    let mask_bit_complement = 1 << partial_mask;
+    let cidr_padding = 256 >> partial_mask;
+    let range_idx = cidr_bit & (mask_bit_complement - 1);
+    ((cidr_padding * range_idx) as u8, partial_mask)
 }
 
 fn get_subnetized_octets(subnets: &[u64; 8]) -> [u64; 4] {
@@ -250,15 +288,9 @@ impl OctetNode for LastNode {
         2 == self.subnets[0]
     }
 
-    fn list(&self) -> Vec<(u8, u8)> {
-        let mut subnet_list: Vec<(u8, u8)> = Vec::new();
-        for bit_pos in 1 .. 511 {
-            let (idx, bit) = to_position(bit_pos).unwrap();
-            if bit_set(self.subnets[idx], bit) {
-                subnet_list.push(calculate_subnet(bit_pos).unwrap());
-            }
-        }
-        subnet_list
+    fn recursive_list(&self, prefix: u32, prefix_length: u8) -> Vec<(u32, u8)> {
+        let inner_prefix: u32 = prefix | ((self.octet as u32) << (32 - (prefix_length + 8)));
+        make_cidr(inner_prefix, prefix_length + 8, &self.subnets)
     }
 }
 
@@ -294,6 +326,12 @@ impl IPTree {
         }
         self.octets.insert(octet, Box::new(StandardNode::new(octet, 1)));
     }
+
+    pub fn list_cidr(&self) -> Vec<String> {
+        self.recursive_list(0, 0).iter().map(|&(ip, mask)| {
+            format!("{}.{}.{}.{}/{}", ip >> 24, (ip >> 16) & 0xff, (ip >> 8) & 0xff, ip & 0xff, mask)
+        }).collect()
+    }
 }
 
 impl OctetNode for IPTree {
@@ -317,8 +355,14 @@ impl OctetNode for IPTree {
         false
     }
 
-    fn list(&self) -> Vec<(u8, u8)> {
-        vec![]
+    fn recursive_list(&self, prefix: u32, prefix_length: u8) -> Vec<(u32, u8)> {
+        let mut cidrs: Vec<(u32, u8)> = Vec::new();
+
+        for node in self.octets.values() {
+            cidrs.append(&mut node.recursive_list(0, 0));
+        }
+
+        cidrs
     }
 }
 
