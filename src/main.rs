@@ -185,5 +185,11 @@ fn main() {
 //        node.add(&[192, 168, j, 255]);
 //    }
 //    println!("{}", node.get_node(&192).unwrap().get_node(&168).unwrap().get_node(&1).unwrap().is_subnet());
-    println!("{}", (!1i64 | 1i64) + 1i64);
+//    println!("{}", (!1i64 | 1i64) + 1i64);
+    let mut tree = IPTree::new();
+    tree.add(&[2, 9, 18, 22]);
+    tree.add(&[2, 9, 18, 21]);
+    tree.add(&[2, 9, 18, 20]);
+    tree.add(&[127, 0, 0, 1]);
+    println!("{:?}", tree.list_cidr());
 }
