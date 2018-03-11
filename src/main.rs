@@ -191,5 +191,9 @@ fn main() {
     tree.add(&[2, 9, 18, 21]);
     tree.add(&[2, 9, 18, 20]);
     tree.add(&[127, 0, 0, 1]);
+    for i in 0 .. 255 {
+        tree.add(&[172, 16, 10, i]);
+    }
+    tree.add(&[172, 16, 10, 255]);
     println!("{:?}", tree.list_cidr());
 }
