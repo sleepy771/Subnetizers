@@ -1,5 +1,6 @@
 mod subnet_tree;
 mod udp_listener;
+mod config;
 
 use subnet_tree::{IPTree, OctetNode};
 
