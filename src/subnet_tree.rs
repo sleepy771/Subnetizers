@@ -166,7 +166,8 @@ fn make_cidr(prefix: u32, prefix_length: u8, subnets: &[u64; 8]) -> Vec<(u32, u8
         let (idx, bit) = to_position(i).unwrap();
         if bit_set(subnets[idx], bit) {
             let (octet, p_mask) = _calculate_partial_cidr(i);
-            ips.push((prefix | octet as u32, prefix_length + p_mask));
+            let ip_address = prefix | (octet as u32) << (24 - prefix_length);
+            ips.push((ip_address, prefix_length + p_mask));
         }
     }
     ips
@@ -178,26 +179,6 @@ fn _calculate_partial_cidr(cidr_bit: u16) -> (u8, u8) {
     let cidr_padding = 256 >> partial_mask;
     let range_idx = cidr_bit & (mask_bit_complement - 1);
     ((cidr_padding * range_idx) as u8, partial_mask)
-}
-
-fn get_subnetized_octets(subnets: &[u64; 8]) -> [u64; 4] {
-    let mut octets: [u64; 8] = subnets.clone();
-    for i in 0 .. 256 {
-        let (parent_idx, parent_bit) = to_position(i).unwrap();
-        if bit_set(subnets[parent_idx], parent_bit) {
-            let (left_idx, left_bit) = to_position(i * 2).unwrap();
-            let (right_idx, right_bit) = to_position(i * 2 + 1).unwrap();
-            octets[left_idx] |= left_bit;
-            octets[right_idx] |= right_bit;
-        }
-    }
-    let mut result: [u64; 4] = [0; 4];
-    result.copy_from_slice(&octets[4..]);
-    result
-}
-
-fn invert_assigned_octets(octets: &[u64; 4]) -> [u64; 4] {
-    [!octets[0], !octets[1], !octets[2], !octets[3]] 
 }
 
 #[derive(Debug)]
@@ -371,18 +352,6 @@ fn floor_log2(number: u64) -> Result<u8, &'static str> {
         0 => Err("Undefined log2 of `0` called."),
         n => Ok((63 - n.leading_zeros()) as u8)
     }
-}
-
-fn calculate_subnet(subnet_bit_pos: u16) -> Result<(u8, u8), &'static str> {
-    if subnet_bit_pos < 1 || subnet_bit_pos > 511 {
-        return Err("Subnet bit position out of defined bounds: `[1, 511]`");
-    }
-    let partial_mask: u8 = floor_log2(subnet_bit_pos as u64).unwrap();
-    let pow2_sup = 1 << partial_mask;
-    let multiplier = 256 >> partial_mask;
-    let k = subnet_bit_pos % pow2_sup;
-    let ip_octet = (multiplier * k) as u8;
-    Ok((ip_octet, partial_mask))
 }
 
 #[cfg(test)]
