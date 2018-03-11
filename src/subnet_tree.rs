@@ -33,7 +33,7 @@ impl StandardNode {
 
     fn _has_subnet(&self, subnet: u16) -> bool {
         let (idx, bit) = to_position(subnet).unwrap();
-        bit_set(self.heap[idx], bit)
+        is_flag_set(self.heap[idx], bit)
     }
 
     fn _set_heap_bit(&mut self, subnet: u16) {
@@ -77,7 +77,7 @@ impl StandardNode {
         let mut pos = octet.clone() as u16 + 256u16;
         loop {
             let (idx, bit) = to_position(pos).unwrap();
-            if bit_set(self.heap[idx], bit) {
+            if is_flag_set(self.heap[idx], bit) {
                 return true;
             }
             pos >>= 1;
@@ -164,7 +164,7 @@ fn make_cidr(prefix: u32, prefix_length: u8, heap: &[u64; 8]) -> Vec<(u32, u8)> 
     let mut ips: Vec<(u32, u8)> = Vec::new();
     for i in 1 .. 511 {
         let (idx, bit) = to_position(i).unwrap();
-        if bit_set(heap[idx], bit) {
+        if is_flag_set(heap[idx], bit) {
             let (octet, p_mask) = _calculate_partial_cidr(i);
             let ip_address = prefix | (octet as u32) << (24 - prefix_length);
             ips.push((ip_address, prefix_length + p_mask));
@@ -197,7 +197,7 @@ impl LastNode {
 
     fn _has_subnet(&self, subnet: u16) -> bool {
         let (idx, bit) = to_position(subnet).unwrap();
-        bit_set(self.heap[idx], bit)
+        is_flag_set(self.heap[idx], bit)
     }
 
     fn _set_heap_bit(&mut self, subnet: u16) {
@@ -255,7 +255,7 @@ impl OctetNode for LastNode {
         let mut pos = octet.clone() as u16 + 256u16;
         loop {
             let (idx, bit) = to_position(pos).unwrap();
-            if bit_set(self.heap[idx], bit) {
+            if is_flag_set(self.heap[idx], bit) {
                 return true;
             }
             pos >>= 1;
@@ -282,7 +282,7 @@ fn to_position(octet: u16) -> Result<(usize, u64), &'static str> {
     Ok(((octet / 64) as usize, (1u64 << (octet % 64)) as u64))
 }
 
-fn bit_set(bits: u64, flag: u64) -> bool {
+fn is_flag_set(bits: u64, flag: u64) -> bool {
     bits & flag == flag
 }
 
@@ -367,11 +367,11 @@ mod tests {
     }
 
     #[test]
-    fn test_bit_set() {
-        assert!(bit_set(1, 1));
-        assert!(bit_set(5, 1));
-        assert!(bit_set(5, 4));
-        assert!(!bit_set(5, 2));
+    fn test_is_flag_set() {
+        assert!(is_flag_set(1, 1));
+        assert!(is_flag_set(5, 1));
+        assert!(is_flag_set(5, 4));
+        assert!(!is_flag_set(5, 2));
     }
 
     #[test]
