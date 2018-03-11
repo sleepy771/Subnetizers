@@ -354,18 +354,6 @@ fn floor_log2(number: u64) -> Result<u8, &'static str> {
     }
 }
 
-fn calculate_subnet(subnet_bit_pos: u16) -> Result<(u8, u8), &'static str> {
-    if subnet_bit_pos < 1 || subnet_bit_pos > 511 {
-        return Err("Subnet bit position out of defined bounds: `[1, 511]`");
-    }
-    let partial_mask: u8 = floor_log2(subnet_bit_pos as u64).unwrap();
-    let pow2_sup = 1 << partial_mask;
-    let multiplier = 256 >> partial_mask;
-    let k = subnet_bit_pos % pow2_sup;
-    let ip_octet = (multiplier * k) as u8;
-    Ok((ip_octet, partial_mask))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -706,18 +694,25 @@ mod tests {
 
     #[test]
     fn test_calculate_subnet() {
-        assert_eq!(calculate_subnet(1), Ok((0, 0)));
-        assert_eq!(calculate_subnet(511), Ok((255, 8))); 
-        assert_eq!(calculate_subnet(256), Ok((0, 8))); 
+        assert_eq!(_calculate_partial_cidr(1), (0, 0));
+        assert_eq!(_calculate_partial_cidr(511), (255, 8)); 
+        assert_eq!(_calculate_partial_cidr(256), (0, 8)); 
     }
 
     #[test]
-    fn test_LastNode_list() {
-        let mut node = LastNode::new(0);
-        node.add(&[1]);
-        node.add(&[2]);
-        node.add(&[3]);
+    fn test__calculate_partial_cidr() {
+        assert_eq!((0u8, 0u8), _calculate_partial_cidr(1u16));
+        assert_eq!((0u8, 1u8), _calculate_partial_cidr(2u16));
+        assert_eq!((0u8, 8u8), _calculate_partial_cidr(256u16));
+        assert_eq!((255u8, 8u8), _calculate_partial_cidr(511u16));
+    }
 
-        assert_eq!(node.list(), vec![(2, 7), (1, 8)]);
+    #[test]
+    fn test_make_cidr() {
+        let prefix = 192u32 << 24 | 168u32 << 16 | 1u32 << 8;
+        let mask = 24u8;
+        assert_eq!(vec![(prefix, 24)], make_cidr(prefix, mask, &[2, 0, 0, 0, 0, 0, 0, 0]));
+        assert_eq!(vec![(prefix, 32)], make_cidr(prefix, mask, &[0, 0, 0, 0, 1, 0, 0, 0]));
+        assert_eq!(vec![(prefix | 64u32, 32)], make_cidr(prefix, mask, &[0, 0, 0, 0, 0, 1, 0, 0]));
     }
 }

@@ -694,18 +694,29 @@ mod tests {
 
     #[test]
     fn test_calculate_subnet() {
-        assert_eq!(calculate_subnet(1), Ok((0, 0)));
-        assert_eq!(calculate_subnet(511), Ok((255, 8))); 
-        assert_eq!(calculate_subnet(256), Ok((0, 8))); 
+        assert_eq!(_calculate_partial_cidr(1), (0, 0));
+        assert_eq!(_calculate_partial_cidr(511), (255, 8)); 
+        assert_eq!(_calculate_partial_cidr(256), (0, 8)); 
     }
 
     #[test]
-    fn test_LastNode_list() {
-        let mut node = LastNode::new(0);
-        node.add(&[1]);
-        node.add(&[2]);
-        node.add(&[3]);
+    fn test__calculate_partial_cidr() {
+        assert_eq!((0u8, 0u8), _calculate_partial_cidr(1u16));
+        assert_eq!((0u8, 1u8), _calculate_partial_cidr(2u16));
+        assert_eq!((0u8, 8u8), _calculate_partial_cidr(256u16));
+        assert_eq!((255u8, 8u8), _calculate_partial_cidr(511u16));
+    }
 
-        assert_eq!(node.list(), vec![(2, 7), (1, 8)]);
+    #[test]
+    fn test_make_cidr() {
+        let prefix: u32 = 192 << 24 | 168 << 16 | 1 << 8;
+        let mask: u8 = 24;
+        assert_eq!(vec![(prefix, 24)], make_cidr(prefix, mask, &[2, 0, 0, 0, 0, 0, 0, 0]));
+        assert_eq!(vec![(prefix, 32)], make_cidr(prefix, mask, &[0, 0, 0, 0, 1, 0, 0, 0]));
+        assert_eq!(vec![(prefix | 64u32, 32)], make_cidr(prefix, mask, &[0, 0, 0, 0, 0, 1, 0, 0]));
+        assert_eq!(
+            vec![(prefix | 64, 32), (prefix | 66, 32)],
+            make_cidr(prefix, mask, &[0, 0, 0, 0, 0, 5, 0, 0])
+        );
     }
 }
