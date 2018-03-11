@@ -136,13 +136,7 @@ impl OctetNode for StandardNode {
     }
 
     fn is_subnet(&self) -> bool {
-        // TODO this method is pretty much unoptimised
-        for k in 0 .. 255 {
-            if !self._is_subnet(k) {
-                return false;
-            }
-        }
-        self._is_subnet(255)
+        self.heap[0] == 2
     }
 
     fn recursive_list(&self, prefix: u32, prefix_length: u8) -> Vec<(u32, u8)> {
@@ -615,19 +609,19 @@ mod tests {
         assert!(!node.is_subnet());
 
         // not all octets are heap yet
-        for i in 0 .. 255 {
-            node.subnodes.insert(i, Box::new(LastNode {
-                octet: i,
-                heap: [2, 0, 0, 0, 0, 0, 0, 0]
-            }));
+        for j in 0 .. 255 {
+            for i in 0 .. 255 {
+                node.add(&[j, i]);
+            }
+            node.add(&[j, 255]);
         };
         assert!(!node.is_subnet());
 
+        for i in 0 .. 255 {
+            node.add(&[255, i]);
+        }
+        node.add(&[255, 255]);
         // all octets are heap
-        node.subnodes.insert(255, Box::new(LastNode {
-            octet: 255,
-            heap: [2, 0, 0, 0, 0, 0, 0, 0]
-        }));
         assert!(node.is_subnet());
 
         // node is subnet
