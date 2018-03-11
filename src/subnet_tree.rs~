@@ -709,10 +709,14 @@ mod tests {
 
     #[test]
     fn test_make_cidr() {
-        let prefix = 192u32 << 24 | 168u32 << 16 | 1u32 << 8;
-        let mask = 24u8;
+        let prefix: u32 = 192 << 24 | 168 << 16 | 1 << 8;
+        let mask: u8 = 24;
         assert_eq!(vec![(prefix, 24)], make_cidr(prefix, mask, &[2, 0, 0, 0, 0, 0, 0, 0]));
         assert_eq!(vec![(prefix, 32)], make_cidr(prefix, mask, &[0, 0, 0, 0, 1, 0, 0, 0]));
         assert_eq!(vec![(prefix | 64u32, 32)], make_cidr(prefix, mask, &[0, 0, 0, 0, 0, 1, 0, 0]));
+        assert_eq!(
+            vec![(prefix | 64, 32), (prefix | 66, 32)],
+            make_cidr(prefix, mask, &[0, 0, 0, 0, 0, 5, 0, 0])
+        );
     }
 }
