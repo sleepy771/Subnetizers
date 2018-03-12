@@ -1,5 +1,5 @@
 use std::net::UdpSocket;
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::{Sender, Receiver};
 use std::str;
 use std::str::FromStr;
 use std::net::Ipv4Addr;
@@ -45,6 +45,45 @@ impl UdpServer {
 
     pub fn shutdown(&self) -> () {
         self.socket.send("STOP!".as_bytes()).unwrap();
+    }
+}
+
+type AggFormatter = fn(Vec<String>) -> Vec<String>;
+
+struct UdpSender {
+    socket: UdpSocket,
+    receiver: Receiver<Vec<String>>,
+    formatter: AggFormatter,
+    send_to: String,
+}
+
+
+impl UdpSender {
+    pub fn new(send_to: &str, formatter: AggFormatter, receiver: Receiver<Vec<String>>) -> UdpSender {
+        match UdpSocket::bind("127.0.0.1:43211") {
+            Ok(socket) => {
+                UdpSender {
+                    socket: socket,
+                    receiver: receiver,
+                    formatter: formatter,
+                    send_to: send_to.to_string(),
+                }
+            }
+            Err(reason) => panic!("Can not bind sender to address: {}", reason)
+        }
+    }
+
+    pub fn run_sender(&self) {
+        loop {
+            match self.receiver.recv() {
+                Ok(ip_vec) => {
+                    for ip_string in (self.formatter)(ip_vec) {
+                        self.socket.send_to(ip_string.as_bytes(), self.send_to.as_str()).unwrap();
+                    }
+                },
+                Err(reason) => panic!("Receiver stopped working!")
+            }
+        };
     }
 }
 
