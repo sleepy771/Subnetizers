@@ -1,6 +1,4 @@
 use std::path::Path;
-use std::convert::AsRef;
-use std::ffi::OsStr;
 use std::fs::File;
 use serde_yaml;
 
