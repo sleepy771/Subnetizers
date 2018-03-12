@@ -58,6 +58,30 @@ impl Settings {
     pub fn add_boradcast(&self) -> bool {
         self.auto_add_broadcast
     }
+
+    pub fn get_udp_bind_address(&self) -> Option<&String> {
+        match self.udp {
+            Some(ref udp_settings) => {
+                match udp_settings.receiver_address {
+                    Some(ref addr) => Some(addr),
+                    None => None
+                }
+            },
+            None => None
+        }
+    }
+
+    pub fn get_udp_sender_to(&self) -> Option<&String> {
+        match self.udp {
+            Some(ref udp_settings) => {
+                match udp_settings.send_to {
+                    Some(ref addr) => Some(addr),
+                    None => None
+                }
+            },
+            None => None
+        }
+    }
 }
 
 pub fn load_from_default_location(root: &Path) -> Result<Settings, String> {

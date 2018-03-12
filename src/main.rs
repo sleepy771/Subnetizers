@@ -36,21 +36,21 @@ lazy_static! {
 }
 
 fn main() {
-//    let mut tree = IPTree::new();
-//    tree.add(&[2, 9, 18, 22]);
-//    tree.add(&[2, 9, 18, 21]);
-//    tree.add(&[2, 9, 18, 20]);
-//    tree.add(&[127, 0, 0, 1]);
-//    for k in 0 .. 255 {
-//        for j in 0 .. 255 {
-//            for i in 0 .. 255 {
-//                tree.add(&[172, k, j, i]);
-//            }
-//        }
-//        tree.add(&[172, k, 255, 255]);
-//    }
-//    println!("{:?}", tree.list_cidr());
-    let settings = load_from_file(&PathBuf::from("settings_test.conf.yaml")).unwrap();
-    println!("{:?}", settings);
-    println!("{:?}", SETTINGS.add_zeroed());
+    let mut tree = IPTree::new();
+    tree.add(&[2, 9, 18, 22]);
+    tree.add(&[2, 9, 18, 21]);
+    tree.add(&[2, 9, 18, 20]);
+    tree.add(&[127, 0, 0, 1]);
+    for k in 0 .. 255 {
+        for j in 0 .. 255 {
+            for i in 0 .. 255 {
+                tree.add(&[172, k, j, i]);
+            }
+        }
+        tree.add(&[172, k, 255, 255]);
+    }
+    println!("{:?}", tree.list_cidr());
+//    let settings = load_from_file(&PathBuf::from("settings_test.conf.yaml")).unwrap();
+//    println!("{:?}", settings);
+//    println!("export UDP_SEND_TO=\"{}\"", SETTINGS.get_udp_sender_to().unwrap());
 }
