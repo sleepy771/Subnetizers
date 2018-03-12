@@ -82,6 +82,10 @@ impl Settings {
             None => None
         }
     }
+    
+    pub fn get_publish_timer(&self) -> u32 {
+        self.publish_timer
+    }
 }
 
 pub fn load_from_default_location(root: &Path) -> Result<Settings, String> {
