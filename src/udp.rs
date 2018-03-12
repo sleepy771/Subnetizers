@@ -1,5 +1,4 @@
 use std::net::UdpSocket;
-use std::sync::mpsc::channel;
 use std::sync::mpsc::Sender;
 use std::str;
 use std::str::FromStr;
