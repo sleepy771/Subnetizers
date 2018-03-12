@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use SETTINGS;
 
 
 pub trait OctetNode {
@@ -98,7 +99,18 @@ impl StandardNode {
             Some(_) => {},
             None => {
                 if self.level == 0 {
-                    self.subnodes.insert(octet, Box::new(LastNode::new(octet)));
+                    if SETTINGS.is_last_node_with_settings() {
+                        self.subnodes.insert(octet,
+                                             Box::new(
+                                                 LastNode::new_with_opts(
+                                                     octet,
+                                                     SETTINGS.add_zeroed(),
+                                                     SETTINGS.add_boradcast(),
+                                                )
+                                            ));
+                    } else {
+                        self.subnodes.insert(octet, Box::new(LastNode::new(octet)));
+                    }
                 } else {
                     self.subnodes.insert(octet, Box::new(StandardNode::new(octet, self.level - 1)));
                 }
@@ -136,16 +148,7 @@ impl OctetNode for StandardNode {
     }
 
     fn is_subnet(&self) -> bool {
-        // TODO this method is pretty much unoptimised
-        // for k in 0 .. 255 {
-        //     if !self._is_subnet(k) {
-        //         return false;
-        //     }
-        // }
-        // self._is_subnet(255)
-        println!("Calling is subnet");
-        self.heap[0] == 2 // this seems to pretty much decrease time.
-        // TODO rewrite tests with this optimisation in mind.
+        self.heap[0] == 2
     }
 
     fn recursive_list(&self, prefix: u32, prefix_length: u8) -> Vec<(u32, u8)> {
@@ -196,6 +199,17 @@ impl LastNode {
             octet: octet,
             heap: [0u64; 8]
         }
+    }
+
+    pub fn new_with_opts(octet: u8, zeroed: bool, broadcast: bool) -> LastNode {
+        let mut node = Self::new(octet);
+        if zeroed {
+            node._set_heap_bit(256u16 + 0);
+        }
+        if broadcast {
+            node._set_heap_bit(256u16 + 255);
+        }
+        node
     }
 
     fn _has_subnet(&self, subnet: u16) -> bool {
@@ -622,14 +636,15 @@ mod tests {
             for i in 0 .. 255 {
                 node.add(&[j, i]);
             }
-            node.add(&[j, 255]);
+            //node.add(&[j, 255]);
         };
+        println!("Before");
         assert!(!node.is_subnet());
+        println!("After");
 
         for i in 0 .. 255 {
             node.add(&[255, i]);
         }
-        node.add(&[255, 255]);
         // all octets are heap
         assert!(node.is_subnet());
 

@@ -1,0 +1,6 @@
+auto_use_zeroed: true
+auto_use_broadcast: true
+publish_timer: 30000
+udp:
+        receiver_address: 127.0.0.1:8080
+        send_to: 127.0.0.1:8081
