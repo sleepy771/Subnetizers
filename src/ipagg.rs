@@ -100,7 +100,7 @@ impl IpAggregator {
     
     }
 
-    fn stop(&mut self) {
+    pub fn stop(&mut self) {
         let stop_mutex = Arc::clone(&self.show_stopper);
         let mut stop = stop_mutex.lock().unwrap();
         *stop = true;
