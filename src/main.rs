@@ -12,11 +12,10 @@ mod udp;
 mod config;
 mod ipagg;
 
-use subnet_tree::{IPTree, OctetNode};
-use config::{Settings, load_from_file, load_from_default_location};
+use config::{Settings, load_from_default_location};
 use std::env::home_dir;
 use std::path::PathBuf;
-use argparse::{ArgumentParser, StoreTrue, Store, StoreOption};
+use argparse::{ArgumentParser, StoreTrue, StoreOption};
 
 
 lazy_static! {

@@ -32,7 +32,6 @@ impl UdpServer {
             match self.socket.recv_from(&mut buffer) {
                 Ok((size, addr)) => {
                     if &buffer[0 .. size] == "STOP!".as_bytes() {
-                        println!("Stop listening");
                         break;
                     }
                     let data = (self.parser)(&buffer[0 .. size]).unwrap();
@@ -127,7 +126,6 @@ pub fn simpl_parser(bytes: &[u8]) -> Result<Vec<[u8; 4]>, String> {
     let mut ip_vec: Vec<[u8; 4]> = Vec::new();
     for (i, &byte) in bytes.iter().enumerate() {
         if byte != b' ' && from < 0 {
-            println!("Found non space");
             from = i as i64;
         } else if byte == b' ' && from >= 0 {
             ip_vec.push(parse_ip(&bytes[from as usize .. i]));
@@ -168,5 +166,39 @@ mod tests {
         assert_eq!(("A B".to_string(), 2), _concat_to_size(&v, 4));
         assert_eq!(("A B C".to_string(), 3), _concat_to_size(&v, 5));
         assert_eq!(("A B C D".to_string(), 4), _concat_to_size(&v, 20));
+    }
+
+    #[test]
+    fn test_UdpServer_listener() {
+        use std::thread;
+        use std::sync::mpsc::channel;
+
+        let (tx, rx) = channel();
+
+        let mut handles = Vec::new();
+
+        handles.push(thread::spawn(move || {
+            let serv = UdpServer::new("127.0.0.1:12345", simpl_parser, tx).unwrap();
+            serv.listen();
+        }));
+        
+        thread::sleep_ms(3000);
+
+        handles.push(thread::spawn(move || {
+            let mut socket = UdpSocket::bind("127.0.0.1:12341").unwrap();
+            let addresses = b"192.168.1.1 127.0.0.1 172.16.100.10";
+            socket.send_to(addresses, "127.0.0.1:12345").unwrap();
+            thread::sleep_ms(2000);
+            socket.send_to(b"STOP!", "127.0.0.1:12345");
+            drop(socket);
+        }));
+
+        let data: Vec<[u8; 4]> = rx.recv().unwrap();
+        
+        for handle in handles {
+            handle.join().unwrap();
+        }
+        assert_eq!(vec![[192, 168, 1, 1], [127, 0, 0, 1], [172, 16, 100, 10]], data);
+
     }
 }
