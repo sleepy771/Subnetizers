@@ -2,7 +2,7 @@ use std::path::Path;
 use std::fs::File;
 use serde_yaml;
 
-const DEFAUL_PATH: &'static str = ".ip_aggregator/settings.yaml";
+const SETTINGS_FILE_NAME: &'static str = "settings.yaml";
 
 
 #[derive(PartialEq,Eq,Serialize,Deserialize,Debug,Clone)]
@@ -87,7 +87,7 @@ impl Settings {
 }
 
 pub fn load_from_default_location(root: &Path) -> Result<Settings, String> {
-    load_from_file(&root.join(&Path::new(DEFAUL_PATH)))
+    load_from_file(&root.join(&Path::new(SETTINGS_FILE_NAME)))
 }
 
 pub fn load_from_file(path: &Path) -> Result<Settings, String> {
@@ -110,7 +110,7 @@ pub fn load_from_file(path: &Path) -> Result<Settings, String> {
 }
 
 pub fn settings_path_exists(root: &Path) -> bool {
-    root.join(&Path::new(DEFAUL_PATH)).exists()
+    root.join(&Path::new(SETTINGS_FILE_NAME)).exists()
 }
 
 fn default_add_broadcast() -> bool {

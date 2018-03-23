@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use SETTINGS;
 
 
-pub trait OctetNode {
+pub trait OctetNode: Send {
     fn add(&mut self, octets: &[u8]) -> ();
 
     fn contains(&self, octet: &u8) -> bool;

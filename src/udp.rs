@@ -38,7 +38,9 @@ impl UdpServer {
                     let data = (self.parser)(&buffer[0 .. size]).unwrap();
                     self.sender.send(data).unwrap();
                 },
-                Err(err) => panic!("UdpServer stoped working due to: {}", err)
+                Err(err) => {
+                    panic!("UdpServer stoped working due to: {}", err);
+                }
             }
         }
     }
@@ -87,22 +89,84 @@ impl UdpSender {
     }
 }
 
+pub fn simpl_formatter(cidrs: Vec<String>) -> Vec<String> {
+    let mut from: usize = 0;
+    let mut concated_msg: Vec<String> = Vec::new();
+    while from < cidrs.len() - 1 {
+        let (msg, idx) = _concat_to_size(&cidrs[from .. ], 508);
+        from += idx;
+        concated_msg.push(msg);
+    }
+    concated_msg
+}
+
+fn _concat_to_size(strings: &[String], max_size: usize) -> (String, usize) {
+    let mut tmp_size: usize = 0;
+    let mut chunk_last_idx: usize = 0;
+    let mut use_entire_slice = true;
+    for (idx, str_) in strings.iter().enumerate() {
+        chunk_last_idx = idx;
+        if tmp_size > 0 {
+            tmp_size += 1;
+        }
+        if str_.len() + tmp_size > max_size {
+            use_entire_slice = false;
+            break;
+        }
+        tmp_size += str_.len();
+    }
+    if use_entire_slice {
+        (strings.join(" "), strings.len() - 1)
+    } else {
+        (strings[..chunk_last_idx].join(" "), chunk_last_idx - 1)
+    }
+}
 
 pub fn simpl_parser(bytes: &[u8]) -> Result<Vec<[u8; 4]>, String> {
     let mut from: i64 = -1;
     let mut ip_vec: Vec<[u8; 4]> = Vec::new();
     for (i, &byte) in bytes.iter().enumerate() {
-        if byte != (' ' as u8) && from < 0 {
+        if byte != b' ' && from < 0 {
+            println!("Found non space");
             from = i as i64;
-        } else if byte == (' ' as u8) && from > 0 {
+        } else if byte == b' ' && from >= 0 {
             ip_vec.push(parse_ip(&bytes[from as usize .. i]));
             from = -1;
         }
         
+    }
+    if from >= 0 {
+        ip_vec.push(parse_ip(&bytes[from as usize ..]));
     }
     Ok(ip_vec)
 }
 
 fn parse_ip(address_str: &[u8]) -> [u8; 4] {
     Ipv4Addr::from_str(str::from_utf8(address_str).unwrap()).unwrap().octets()    
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_ip() {
+        assert_eq!([192, 168, 1, 1], parse_ip(b"192.168.1.1"));
+        assert_eq!([127, 0, 0, 1], parse_ip(b"127.0.0.1"));
+    }
+
+    #[test]
+    fn test_simpl_parser() {
+        let ips = b" 127.0.0.1   192.168.1.1";
+        assert_eq!(Ok(vec![[127, 0, 0, 1], [192, 168, 1, 1]]), simpl_parser(ips));
+    }
+
+    #[test]
+    fn test__concat_to_size() {
+        let v = vec!["A".to_string(), "B".to_string(), "C".to_string(), "D".to_string()];
+        assert_eq!(("A B".to_string(), 1), _concat_to_size(&v, 3));
+        assert_eq!(("A B".to_string(), 1), _concat_to_size(&v, 4));
+        assert_eq!(("A B C".to_string(), 2), _concat_to_size(&v, 5));
+        assert_eq!(("A B C D".to_string(), 3), _concat_to_size(&v, 20));
+    }
 }
