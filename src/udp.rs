@@ -116,9 +116,9 @@ fn _concat_to_size(strings: &[String], max_size: usize) -> (String, usize) {
         tmp_size += str_.len();
     }
     if use_entire_slice {
-        (strings.join(" "), strings.len() - 1)
+        (strings.join(" "), strings.len())
     } else {
-        (strings[..chunk_last_idx].join(" "), chunk_last_idx - 1)
+        (strings[..chunk_last_idx].join(" "), chunk_last_idx)
     }
 }
 
@@ -164,9 +164,9 @@ mod tests {
     #[test]
     fn test__concat_to_size() {
         let v = vec!["A".to_string(), "B".to_string(), "C".to_string(), "D".to_string()];
-        assert_eq!(("A B".to_string(), 1), _concat_to_size(&v, 3));
-        assert_eq!(("A B".to_string(), 1), _concat_to_size(&v, 4));
-        assert_eq!(("A B C".to_string(), 2), _concat_to_size(&v, 5));
-        assert_eq!(("A B C D".to_string(), 3), _concat_to_size(&v, 20));
+        assert_eq!(("A B".to_string(), 2), _concat_to_size(&v, 3));
+        assert_eq!(("A B".to_string(), 2), _concat_to_size(&v, 4));
+        assert_eq!(("A B C".to_string(), 3), _concat_to_size(&v, 5));
+        assert_eq!(("A B C D".to_string(), 4), _concat_to_size(&v, 20));
     }
 }
