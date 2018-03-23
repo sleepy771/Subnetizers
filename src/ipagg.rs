@@ -1,9 +1,9 @@
 use subnet_tree::{IPTree, OctetNode};
-use udp::{UdpServer, simpl_parser};
+use udp::{UdpServer, simpl_parser, UdpSender, simpl_formatter};
 use std::thread::JoinHandle;
 use std::thread;
 use std::sync::{Arc, Mutex};
-use std::sync::mpsc::{Sender, Receiver};
+use std::sync::mpsc::{Sender, Receiver, channel};
 use std::time::Duration;
 use SETTINGS;
 
@@ -24,6 +24,17 @@ impl IpAggregator {
     }
 
     pub fn start(&mut self) -> () {
+        let (octet_tx, octet_rx) = channel();
+        self._start_listener_thread(octet_tx);
+        self._start_tree_updater_thread(octet_rx);
+        let (cidr_tx, cidr_rx) = channel();
+        self._start_tree_lister_thread(cidr_tx);
+        self._start_push_result_thread(cidr_rx);
+
+        while !self.handles.is_empty() {
+            let handle = self.handles.pop().unwrap();
+            handle.join().unwrap();
+        }
 
     }
 
@@ -36,9 +47,16 @@ impl IpAggregator {
     }
 
     fn _start_tree_updater_thread(&mut self, receiver: Receiver<Vec<[u8; 4]>>) {
-        let mut tree_ref_mutex = Arc::clone(&self.tree);
+        let tree_ref_mutex = Arc::clone(&self.tree);
+        let stoper_mutex = Arc::clone(&self.show_stopper);
         self.handles.push(thread::spawn(move || {
             loop {
+                let stop: bool = {
+                    *stoper_mutex.lock().unwrap()
+                };
+                if stop {
+                    break;
+                }
                 match receiver.recv() {
                     Ok(data) => {
                         let mut tree_ref = tree_ref_mutex.lock().unwrap();
@@ -73,10 +91,18 @@ impl IpAggregator {
         }));
     }
 
-    fn _start_push_result_thread(&mut self, receiver: Sender<Vec<String>>) {
-        self.handles.push(thread::spawn(||{
-            
+    fn _start_push_result_thread(&mut self, receiver: Receiver<Vec<String>>) {
+        let send_to = SETTINGS.get_udp_sender_to().unwrap();
+        self.handles.push(thread::spawn(move ||{
+            let sender = UdpSender::new(send_to.as_str(), simpl_formatter, receiver);
+            sender.run_sender();
         }));
     
+    }
+
+    fn stop(&mut self) {
+        let stop_mutex = Arc::clone(&self.show_stopper);
+        let mut stop = stop_mutex.lock().unwrap();
+        *stop = true;
     }
 }

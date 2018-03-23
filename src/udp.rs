@@ -52,7 +52,7 @@ impl UdpServer {
 
 type AggFormatter = fn(Vec<String>) -> Vec<String>;
 
-struct UdpSender {
+pub struct UdpSender {
     socket: UdpSocket,
     receiver: Receiver<Vec<String>>,
     formatter: AggFormatter,
