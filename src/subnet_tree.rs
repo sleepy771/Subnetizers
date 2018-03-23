@@ -267,7 +267,7 @@ impl OctetNode for LastNode {
         self.expand(octets[0]);
     }
 
-    fn get_node(&mut self, octet: &u8) -> Option<&mut Box<OctetNode>> {
+    fn get_node(&mut self, _: &u8) -> Option<&mut Box<OctetNode>> {
         None
     }
 

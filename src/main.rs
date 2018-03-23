@@ -21,7 +21,7 @@ use ipagg::IpAggregator;
 
 lazy_static! {
     pub static ref SETTINGS: Settings = {
-        let (optional_path, _) = start_up();
+        let (optional_path, _) = read_cmd_line_args();
         let paths = {
             let mut paths = Vec::new();
             if let Some(home_path) = home_dir() {
@@ -46,7 +46,7 @@ lazy_static! {
     };
 }
 
-fn start_up() -> (Option<String>, bool) {
+fn read_cmd_line_args() -> (Option<String>, bool) {
     let mut settings_path: Option<String> = None;
     let mut start_udp: bool = false;
     {
