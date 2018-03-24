@@ -356,7 +356,7 @@ impl OctetNode for IPTree {
         false
     }
 
-    fn recursive_list(&self, prefix: u32, prefix_length: u8) -> Vec<(u32, u8)> {
+    fn recursive_list(&self, _prefix: u32, _: u8) -> Vec<(u32, u8)> {
         let mut cidrs: Vec<(u32, u8)> = Vec::new();
 
         for node in self.octets.values() {

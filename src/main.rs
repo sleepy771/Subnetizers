@@ -60,7 +60,6 @@ fn read_cmd_line_args() -> (Option<String>, bool) {
 }
 
 fn main() {
-    let _ = SETTINGS.get_publish_timer();
     let mut aggregator = IpAggregator::new();
     aggregator.start();
 }

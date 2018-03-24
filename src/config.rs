@@ -130,5 +130,5 @@ fn default_udp_sender() -> Option<String> {
 }
 
 fn thrity_seconds() -> u32 {
-    30 * 60 * 1000
+    30
 }

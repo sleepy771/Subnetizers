@@ -1,4 +1,4 @@
-#!env python3
+#!/usr/bin/env python3
 import socket
 import random
 
@@ -9,8 +9,7 @@ UDP_PORT = 6788
 def ipv4_gen():
     rnd = random.Random()
     for _ in range(30):
-        yield '%d.%d.%d.%d' % (rnd.randint(1, 255),
-                               rnd.randint(0, 255),
+        yield '85.%d.%d.%d' % (rnd.randint(1, 255),
                                rnd.randint(0, 255),
                                rnd.randint(1, 255))
 
@@ -23,4 +22,4 @@ if __name__ == '__main__':
     soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     while True:
-        soc.sendto(make_dgram_msg(), (UDP_IP, UDP_PORT))
+        soc.sendto(bytes(make_dgram_msg(), encoding='ascii'), (UDP_IP, UDP_PORT))
