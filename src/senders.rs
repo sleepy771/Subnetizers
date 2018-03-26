@@ -49,6 +49,48 @@ impl UdpSender {
     }
 }
 
+pub mod kafka {
+    use super::*;
+    use kafka::producer::{Producer, Record, RequiredAcks};
+    use std::time::Duration;
+
+    pub struct KafkaProducer {
+        producer: Producer,
+        formatter: AggFormatter,
+        receiver: Receiver<Vec<String>>,
+        topic: String,
+    }
+
+    impl KafkaProducer {
+        pub fn new(hosts: Vec<String>, ack_timeout: Duration, topic: String, formatter: AggFormatter, receiver: Receiver<Vec<String>>)
+            -> KafkaProducer {
+            KafkaProducer {
+                producer: Producer::from_hosts(hosts).with_ack_timeout(ack_timeout).with_required_acks(RequiredAcks::One).create().unwrap(),
+                formatter,
+                receiver,
+                topic,
+            }
+        }
+    }
+
+    impl Sender for KafkaProducer {
+        fn run_sender(&self) {
+            loop {
+                match self.receiver.recv() {
+                    Ok(ip_vec) => {
+                        if ip_vec == vec!["STOP!".to_string()] {
+                            break;
+                        }
+                        for ip_string in (self.formatter)(ip_vec) {
+                            self.producer.send(&Record::from_value(self.topic.as_ref(), ip_string.as_bytes())).unwrap();
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
