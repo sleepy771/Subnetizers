@@ -1,5 +1,7 @@
 use subnet_tree::{IPTree, OctetNode};
-use udp::{UdpServer, UdpSender, simpl_formatter};
+use udp::{UdpSender, simpl_formatter};
+use listeners::udp::UdpServer;
+use listeners::Listener;
 use parsers::simpl_parser;
 use std::thread::JoinHandle;
 use std::thread;
@@ -42,7 +44,7 @@ impl IpAggregator {
     fn _start_listener_thread(&mut self, sender: Sender<Vec<[u8;4]>>) {
         let bind_addr: &str = SETTINGS.get_udp_bind_address().unwrap().as_str();
         self.handles.push(thread::spawn(move || {
-            let listener = UdpServer::new(bind_addr, simpl_parser, sender).unwrap();
+            let mut listener = UdpServer::new(bind_addr, simpl_parser, sender).unwrap();
             listener.listen();
         }));
     }
