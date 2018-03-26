@@ -118,9 +118,8 @@ pub mod udp {
         }
     }
 
-    #[cfg(tests)]
+    #[cfg(test)]
     mod tests {
-        // FIXME tests are not executed
         use super::*;
         use parsers::simpl_parser;
 

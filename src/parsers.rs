@@ -27,7 +27,7 @@ fn parse_ip(address_str: &[u8]) -> [u8; 4] {
     Ipv4Addr::from_str(str::from_utf8(address_str).unwrap()).unwrap().octets()
 }
 
-#[cfg(tests)]
+#[cfg(test)]
 mod tests {
     use super::*;
 

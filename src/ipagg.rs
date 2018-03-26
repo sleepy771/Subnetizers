@@ -1,9 +1,10 @@
 use subnet_tree::{IPTree, OctetNode};
-use udp::{UdpSender, simpl_formatter};
+use udp::UdpSender;
 use listeners::udp::UdpServer;
 use listeners::kafka::KafkaListener;
 use listeners::{Listener, IpSender, listener_factory, ListenerCreds};
 use parsers::{simpl_parser, StreamParser};
+use formatters::{simpl_formatter, AggFormatter};
 use std::thread::JoinHandle;
 use std::thread;
 use std::sync::{Arc, Mutex};

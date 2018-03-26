@@ -15,6 +15,7 @@ mod config;
 mod ipagg;
 mod parsers;
 mod listeners;
+mod formatters;
 
 use config::{Settings, load_from_default_location, load_from_file};
 use std::env::home_dir;
