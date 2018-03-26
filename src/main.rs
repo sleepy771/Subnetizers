@@ -6,12 +6,6 @@ extern crate lazy_static;
 extern crate serde_derive;
 extern crate serde_yaml;
 
-use argparse::{ArgumentParser, StoreOption, StoreTrue};
-use config::{load_from_default_location, load_from_file, Settings};
-use ipagg::IpAggregator;
-use std::env::home_dir;
-use std::path::PathBuf;
-
 mod subnet_tree;
 mod udp;
 mod config;
@@ -19,6 +13,12 @@ mod ipagg;
 mod parsers;
 mod listeners;
 mod formatters;
+
+use argparse::{ArgumentParser, StoreOption, StoreTrue};
+use config::{load_from_default_location, load_from_file, Settings};
+use ipagg::IpAggregator;
+use std::env::home_dir;
+use std::path::PathBuf;
 
 
 lazy_static! {
