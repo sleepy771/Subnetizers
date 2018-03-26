@@ -1,7 +1,6 @@
 use formatters::AggFormatter;
 use std::net::Ipv4Addr;
 use std::net::UdpSocket;
-use std::str;
 use std::str::FromStr;
 use std::sync::mpsc::Receiver;
 
@@ -49,6 +48,7 @@ impl UdpSender {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::str;
 
     #[test]
     fn test_UdpSender_run_sender() {
