@@ -1,9 +1,12 @@
-auto_use_zeroed: true/home/filip/develop/rust/Subnetizers
+auto_use_zeroed: true
 auto_use_broadcast: true
 publish_timer: 30
 receiver:
   receiver: udp
   udp_address: 127.0.0.1:8080
+#  kafka_hosts: [ localhost:9092 ]
+#  kafka_topic: ips
+#  kafka_group: group
 sender:
   sender: udp
   udp_address: 127.0.0.1:8081
