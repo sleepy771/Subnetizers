@@ -1,13 +1,16 @@
+extern crate argparse;
+extern crate kafka;
+#[macro_use]
+extern crate lazy_static;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_yaml;
 
-#[macro_use]
-extern crate lazy_static;
-
-extern crate argparse;
-
-extern crate kafka;
+use argparse::{ArgumentParser, StoreOption, StoreTrue};
+use config::{load_from_default_location, load_from_file, Settings};
+use ipagg::IpAggregator;
+use std::env::home_dir;
+use std::path::PathBuf;
 
 mod subnet_tree;
 mod udp;
@@ -16,12 +19,6 @@ mod ipagg;
 mod parsers;
 mod listeners;
 mod formatters;
-
-use config::{Settings, load_from_default_location, load_from_file};
-use std::env::home_dir;
-use std::path::PathBuf;
-use argparse::{ArgumentParser, StoreTrue, StoreOption};
-use ipagg::IpAggregator;
 
 
 lazy_static! {

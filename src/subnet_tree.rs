@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use SETTINGS;
+use std::collections::HashMap;
 
 
 pub trait OctetNode: Send {
@@ -28,7 +28,7 @@ impl StandardNode {
             octet,
             level,
             heap: [0; 8],
-            subnodes: HashMap::new()
+            subnodes: HashMap::new(),
         }
     }
 
@@ -50,7 +50,7 @@ impl StandardNode {
 
     fn _has_empty_heap(&self) -> bool {
         let mut heap = 0u64;
-        for i in 0 .. 8 {
+        for i in 0..8 {
             heap |= self.heap[i];
         }
         heap == 0u64
@@ -96,7 +96,7 @@ impl StandardNode {
             return;
         }
         match self.subnodes.get(&octet) {
-            Some(_) => {},
+            Some(_) => {}
             None => {
                 if self.level == 0 {
                     if SETTINGS.is_last_node_with_settings() {
@@ -106,8 +106,8 @@ impl StandardNode {
                                                      octet,
                                                      SETTINGS.add_zeroed(),
                                                      SETTINGS.add_boradcast(),
-                                                )
-                                            ));
+                                                 )
+                                             ));
                     } else {
                         self.subnodes.insert(octet, Box::new(LastNode::new(octet)));
                     }
@@ -133,7 +133,7 @@ impl OctetNode for StandardNode {
         if self.subnodes.get(&octet[0]).unwrap().is_subnet() {
             self._set_heap_bit(octet[0] as u16 + 256u16);
             if self._is_subnet(octet[0]) && self._is_subnet(neighbor(octet[0] as u16) as u8) {
-                self._subnetize(octet[0] as u16 + 256u16);   
+                self._subnetize(octet[0] as u16 + 256u16);
             }
             self.subnodes.remove(&octet[0]);
         }
@@ -161,7 +161,7 @@ impl OctetNode for StandardNode {
             prefix_vector.append(&mut node.recursive_list(inner_prefix, prefix_length + 8));
         }
 
-        if ! self._has_empty_heap() {
+        if !self._has_empty_heap() {
             prefix_vector.append(&mut make_cidr(inner_prefix, prefix_length + 8, &self.heap));
         }
 
@@ -171,7 +171,7 @@ impl OctetNode for StandardNode {
 
 fn make_cidr(prefix: u32, prefix_length: u8, heap: &[u64; 8]) -> Vec<(u32, u8)> {
     let mut ips: Vec<(u32, u8)> = Vec::new();
-    for i in 1 .. 511 {
+    for i in 1..511 {
         let (idx, bit) = to_position(i).unwrap();
         if is_flag_set(heap[idx], bit) {
             let (octet, p_mask) = _calculate_partial_cidr(i);
@@ -193,14 +193,14 @@ fn _calculate_partial_cidr(cidr_bit: u16) -> (u8, u8) {
 #[derive(Debug)]
 pub struct LastNode {
     octet: u8,
-    heap: [u64; 8]
+    heap: [u64; 8],
 }
 
 impl LastNode {
     pub fn new(octet: u8) -> LastNode {
         LastNode {
             octet,
-            heap: [0u64; 8]
+            heap: [0u64; 8],
         }
     }
 
@@ -413,7 +413,7 @@ mod tests {
     fn test_LastNode__subnetize() {
         let mut node = LastNode {
             octet: 0,
-            heap: [0, 0, 0, 0, 3, 0, 0, 0]
+            heap: [0, 0, 0, 0, 3, 0, 0, 0],
         };
         node._subnetize(256 + 1);
         assert_eq!(node.heap, [0, 0, 1, 0, 0, 0, 0, 0]);
@@ -423,7 +423,7 @@ mod tests {
     fn test_LastNode__unset_heap_bit() {
         let mut node = LastNode {
             octet: 0,
-            heap: [1, 0, 0, 0, 0, 0, 0, 0]
+            heap: [1, 0, 0, 0, 0, 0, 0, 0],
         };
         node._unset_heap_bit(0);
         assert_eq!(node.heap, [0; 8]);
@@ -433,7 +433,7 @@ mod tests {
     fn test_LastNode__set_heap_bit() {
         let mut node = LastNode {
             octet: 0,
-            heap: [0, 0, 0, 0, 0, 0, 0, 0]
+            heap: [0, 0, 0, 0, 0, 0, 0, 0],
         };
         node._set_heap_bit(0);
         assert_eq!(node.heap, [1, 0, 0, 0, 0, 0, 0, 0]);
@@ -443,7 +443,7 @@ mod tests {
     fn test_LastNode___has_subnet() {
         let mut node = LastNode {
             octet: 0,
-            heap: [0, 0, 0, 0, 1, 0, 0, 0]
+            heap: [0, 0, 0, 0, 1, 0, 0, 0],
         };
         assert!(node._has_subnet(256 + 0));
     }
@@ -452,7 +452,7 @@ mod tests {
     fn test_LastNode_contains() {
         let mut node = LastNode {
             octet: 0,
-            heap: [2, 0, 0, 0, 0, 0, 0, 0]
+            heap: [2, 0, 0, 0, 0, 0, 0, 0],
         };
         assert!(node.contains(&128));
         assert!(node.contains(&2));
@@ -469,7 +469,7 @@ mod tests {
     #[test]
     fn test_LastNode_is_subnet() {
         let mut node = LastNode::new(0);
-        for i in 0 .. 255 {
+        for i in 0..255 {
             node.expand(i);
         }
         assert!(!node.is_subnet());
@@ -483,7 +483,7 @@ mod tests {
             level: 0,
             heap: [2, 0, 0, 0, 0, 0, 0, 0],
             subnodes: HashMap::new(),
-            octet: 0
+            octet: 0,
         };
         assert!(node._has_subnet(1));
         assert!(!node._has_subnet(2));
@@ -495,7 +495,7 @@ mod tests {
             octet: 0,
             heap: [1, 0, 0, 0, 0, 0, 0, 0],
             subnodes: HashMap::new(),
-            level: 0
+            level: 0,
         };
         node._unset_heap_bit(0);
         assert_eq!(node.heap, [0; 8]);
@@ -507,7 +507,7 @@ mod tests {
             octet: 0,
             heap: [0, 0, 0, 0, 0, 0, 0, 0],
             subnodes: HashMap::new(),
-            level: 0
+            level: 0,
         };
         node._set_heap_bit(0);
         assert_eq!(node.heap, [1, 0, 0, 0, 0, 0, 0, 0]);
@@ -519,7 +519,7 @@ mod tests {
             octet: 0,
             heap: [0, 0, 0, 0, 3, 0, 0, 0],
             subnodes: HashMap::new(),
-            level: 0
+            level: 0,
         };
         node._subnetize(256 + 1);
         assert_eq!(node.heap, [0, 0, 1, 0, 0, 0, 0, 0]);
@@ -532,21 +532,21 @@ mod tests {
             octet: 0,
             heap: [0, 0, 0, 0, 1, 0, 0, 0],
             subnodes: HashMap::new(),
-            level: 0
+            level: 0,
         };
         assert!(node._is_subnet(0));
         assert!(!node._is_subnet(1));
-        
+
         // Node does not have subnet bit setup, but child already is subnet
         let mut node = StandardNode {
             octet: 0,
             heap: [0, 0, 0, 0, 1, 0, 0, 0],
             subnodes: HashMap::new(),
-            level: 0
+            level: 0,
         };
         node.subnodes.insert(0, Box::new(LastNode {
-            heap: [ 2, 0, 0, 0, 0, 0, 0, 0],
-            octet: 0
+            heap: [2, 0, 0, 0, 0, 0, 0, 0],
+            octet: 0,
         }));
         assert!(node._is_subnet(0));
 
@@ -555,11 +555,11 @@ mod tests {
             octet: 0,
             heap: [0, 0, 0, 0, 1, 0, 0, 0],
             subnodes: HashMap::new(),
-            level: 0
+            level: 0,
         };
         node.subnodes.insert(0, Box::new(LastNode {
-            heap: [ 0, 0, 0, 0, 0, 0, 0, 0],
-            octet: 0
+            heap: [0, 0, 0, 0, 0, 0, 0, 0],
+            octet: 0,
         }));
         assert!(node._is_subnet(0));
 
@@ -568,11 +568,11 @@ mod tests {
             octet: 0,
             heap: [0, 0, 0, 0, 0, 0, 0, 0],
             subnodes: HashMap::new(),
-            level: 0
+            level: 0,
         };
         node.subnodes.insert(0, Box::new(LastNode {
-            heap: [ 0, 0, 0, 0, 1, 0, 0, 0],
-            octet: 0
+            heap: [0, 0, 0, 0, 1, 0, 0, 0],
+            octet: 0,
         }));
         assert!(!node._is_subnet(0));
 
@@ -581,7 +581,7 @@ mod tests {
             octet: 0,
             heap: [2, 0, 0, 0, 0, 0, 0, 0],
             subnodes: HashMap::new(),
-            level: 0
+            level: 0,
         };
         assert!(node._is_subnet(23));
     }
@@ -607,13 +607,13 @@ mod tests {
         assert_eq!(node.heap, [2, 0, 0, 0, 0, 0, 0, 0]);
         assert!(!node.subnodes.contains_key(&1));
     }
-    
+
     #[test]
     fn test_StandardNode_contains() {
         // test empty
         let mut node = StandardNode::new(0, 0);
         assert!(!node.contains(&1));
-        
+
         // test after insertion
         node.subnodes.insert(2, Box::new(LastNode::new(2)));
         assert!(node.contains(&2));
@@ -623,7 +623,7 @@ mod tests {
             octet: 0,
             level: 0,
             subnodes: HashMap::new(),
-            heap: [2, 0, 0, 0, 0, 0, 0, 0]
+            heap: [2, 0, 0, 0, 0, 0, 0, 0],
         };
         assert!(node.contains(&2));
     }
@@ -631,19 +631,19 @@ mod tests {
     #[test]
     fn test_StandardNode_is_subnet() {
         // simple test wihtout heap
-        let mut node = StandardNode::new(0,0);
+        let mut node = StandardNode::new(0, 0);
         assert!(!node.is_subnet());
 
         // not all octets are heap yet
-        for j in 0 .. 255 {
-            for i in 0 .. 255 {
+        for j in 0..255 {
+            for i in 0..255 {
                 node.add(&[j, i]);
             }
             node.add(&[j, 255]);
         };
         assert!(!node.is_subnet());
 
-        for i in 0 .. 255 {
+        for i in 0..255 {
             node.add(&[255, i]);
         }
         // all octets are heap
@@ -654,7 +654,7 @@ mod tests {
             octet: 0,
             level: 0,
             subnodes: HashMap::new(),
-            heap: [2, 0, 0, 0, 0, 0, 0, 0]
+            heap: [2, 0, 0, 0, 0, 0, 0, 0],
         };
         assert!(node.is_subnet());
 
@@ -663,7 +663,7 @@ mod tests {
     }
 
     #[test]
-    fn test_StandardNode_add () {
+    fn test_StandardNode_add() {
         // Most important test.
         // Test add 2 octets in tree.
         let mut node = StandardNode::new(0, 0);
@@ -678,7 +678,7 @@ mod tests {
         node.add(&[0, 0]);
         node.add(&[0, 255]);
 
-        for i in 1 .. 255 {
+        for i in 1..255 {
             node.add(&[0, i]);
         }
         assert_eq!(node.heap, [0, 0, 0, 0, 1, 0, 0, 0]);
@@ -688,11 +688,11 @@ mod tests {
     #[test]
     fn test_StandardNode_add_multipl_heap() {
         let mut node = StandardNode::new(0, 0);
-        for j in 0 .. 4 {
+        for j in 0..4 {
             node.add(&[j, 0]);
             node.add(&[j, 255]);
 
-            for i in 1 .. 255 {
+            for i in 1..255 {
                 node.add(&[j, i]);
             }
         }
@@ -714,8 +714,8 @@ mod tests {
     #[test]
     fn test_calculate_subnet() {
         assert_eq!(_calculate_partial_cidr(1), (0, 0));
-        assert_eq!(_calculate_partial_cidr(511), (255, 8)); 
-        assert_eq!(_calculate_partial_cidr(256), (0, 8)); 
+        assert_eq!(_calculate_partial_cidr(511), (255, 8));
+        assert_eq!(_calculate_partial_cidr(256), (0, 8));
     }
 
     #[test]

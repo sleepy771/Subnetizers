@@ -1,11 +1,11 @@
-use std::path::Path;
-use std::fs::File;
 use serde_yaml;
+use std::fs::File;
+use std::path::Path;
 
 const SETTINGS_FILE_NAME: &'static str = "settings.yaml";
 
 
-#[derive(PartialEq,Eq,Serialize,Deserialize,Debug,Clone)]
+#[derive(PartialEq, Eq, Serialize, Deserialize, Debug, Clone)]
 pub struct UdpSettings {
     #[serde(default = "default_udp_receiver")]
     receiver_address: Option<String>,
@@ -13,7 +13,7 @@ pub struct UdpSettings {
     send_to: Option<String>,
 }
 
-#[derive(Deserialize,PartialEq,Eq,Debug,Clone)]
+#[derive(Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Settings {
     udp: Option<UdpSettings>,
     #[serde(default = "thrity_seconds")]
@@ -30,11 +30,11 @@ impl Settings {
         Settings {
             udp: Some(UdpSettings {
                 receiver_address: default_udp_receiver(),
-                send_to: default_udp_sender()
+                send_to: default_udp_sender(),
             }),
             publish_timer: thrity_seconds(),
             auto_add_zeroed: default_add_zeroed(),
-            auto_add_broadcast: default_add_broadcast()
+            auto_add_broadcast: default_add_broadcast(),
         }
     }
 
@@ -64,7 +64,7 @@ impl Settings {
                     Some(ref addr) => Some(addr),
                     None => None
                 }
-            },
+            }
             None => None
         }
     }
@@ -76,11 +76,11 @@ impl Settings {
                     Some(ref addr) => Some(addr),
                     None => None
                 }
-            },
+            }
             None => None
         }
     }
-    
+
     pub fn get_publish_timer(&self) -> u32 {
         self.publish_timer
     }
@@ -92,14 +92,14 @@ pub fn load_from_default_location(root: &Path) -> Result<Settings, String> {
 
 pub fn load_from_file(path: &Path) -> Result<Settings, String> {
     println!("Attempted load of settings from `{}`", path.display());
-    if ! path.exists() {
+    if !path.exists() {
         return Err(format!("File `{}` does not exist!", path.display()));
     }
-    
+
     match File::open(&path) {
         Err(reason) => {
             Err(format!("File `{}` can not be open: {}", path.display(), reason))
-        },
+        }
         Ok(file) => {
             match serde_yaml::from_reader(file) {
                 Err(reason) => Err(format!("Parsing settings file `{}` failed: {}", path.display(), reason)),

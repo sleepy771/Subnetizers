@@ -1,11 +1,10 @@
-
 pub type AggFormatter = fn(Vec<String>) -> Vec<String>;
 
-pub fn simpl_formatter(cidrs: Vec<String>) -> Vec<String> {
+pub fn simple_formatter(cidrs: Vec<String>) -> Vec<String> {
     let mut from: usize = 0;
     let mut concated_msg: Vec<String> = Vec::new();
     while from < cidrs.len() - 1 {
-        let (msg, idx) = _concat_to_size(&cidrs[from .. ], 508);
+        let (msg, idx) = _concat_to_size(&cidrs[from..], 508);
         from += idx;
         concated_msg.push(msg);
     }

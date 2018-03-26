@@ -1,24 +1,22 @@
-
-use std::str;
 use std::net::Ipv4Addr;
+use std::str;
 use std::str::FromStr;
 
 pub type StreamParser = fn(&[u8]) -> Result<Vec<[u8; 4]>, String>;
 
-pub fn simpl_parser(bytes: &[u8]) -> Result<Vec<[u8; 4]>, String> {
+pub fn simple_parser(bytes: &[u8]) -> Result<Vec<[u8; 4]>, String> {
     let mut from: i64 = -1;
     let mut ip_vec: Vec<[u8; 4]> = Vec::new();
     for (i, &byte) in bytes.iter().enumerate() {
         if byte != b' ' && from < 0 {
             from = i as i64;
         } else if byte == b' ' && from >= 0 {
-            ip_vec.push(parse_ip(&bytes[from as usize .. i]));
+            ip_vec.push(parse_ip(&bytes[from as usize..i]));
             from = -1;
         }
-
     }
     if from >= 0 {
-        ip_vec.push(parse_ip(&bytes[from as usize ..]));
+        ip_vec.push(parse_ip(&bytes[from as usize..]));
     }
     Ok(ip_vec)
 }
@@ -31,7 +29,6 @@ fn parse_ip(address_str: &[u8]) -> [u8; 4] {
 mod tests {
     use super::*;
 
-
     #[test]
     fn test_parse_ip() {
         assert_eq!([192, 168, 1, 1], parse_ip(b"192.168.1.1"));
@@ -41,7 +38,6 @@ mod tests {
     #[test]
     fn test_simpl_parser() {
         let ips = b" 127.0.0.1   192.168.1.1";
-        assert_eq!(Ok(vec![[127, 0, 0, 1], [192, 168, 1, 1]]), simpl_parser(ips));
+        assert_eq!(Ok(vec![[127, 0, 0, 1], [192, 168, 1, 1]]), simple_parser(ips));
     }
-
 }

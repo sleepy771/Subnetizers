@@ -1,9 +1,9 @@
+use formatters::AggFormatter;
+use std::net::Ipv4Addr;
 use std::net::UdpSocket;
-use std::sync::mpsc:: Receiver;
 use std::str;
 use std::str::FromStr;
-use std::net::Ipv4Addr;
-use formatters::AggFormatter;
+use std::sync::mpsc::Receiver;
 
 
 pub struct UdpSender {
@@ -19,9 +19,9 @@ impl UdpSender {
         match UdpSocket::bind("127.0.0.1:43211") {
             Ok(socket) => {
                 UdpSender {
-                    socket: socket,
-                    receiver: receiver,
-                    formatter: formatter,
+                    socket,
+                    receiver,
+                    formatter,
                     send_to: send_to.to_string(),
                 }
             }
@@ -39,7 +39,7 @@ impl UdpSender {
                     for ip_string in (self.formatter)(ip_vec) {
                         self.socket.send_to(ip_string.as_bytes(), self.send_to.as_str()).unwrap();
                     }
-                },
+                }
                 Err(reason) => panic!("Receiver stopped working!")
             }
         };
@@ -55,24 +55,24 @@ mod tests {
         use std::thread;
         use std::sync::mpsc::channel;
         use std::string::ToString;
-        use formatters::simpl_formatter;
+        use formatters::simple_formatter;
 
         let data = vec![
             "192.168.2.1/32".to_string(),
             "172.16.100.1/24".to_string(),
             "10.10.1.1/16".to_string()];
-        
+
         let mut handles = Vec::new();
 
         let (mut udp_listener_tx, mut udp_listener_rx) = channel();
         handles.push(thread::spawn(move || {
             let mut socket = UdpSocket::bind("127.0.0.1:13345").unwrap();
-            
+
             let mut buffer: [u8; 2048] = [0; 2048];
 
             match socket.recv_from(&mut buffer) {
                 Ok((len, addr)) => {
-                    udp_listener_tx.send(str::from_utf8(&buffer[0 .. len]).unwrap().to_string()).unwrap();
+                    udp_listener_tx.send(str::from_utf8(&buffer[0..len]).unwrap().to_string()).unwrap();
                 }
 
                 Err(e) => panic!("Error occured during receive udp datagram: {}", e)
@@ -84,7 +84,7 @@ mod tests {
         let (mut tx, mut rx) = channel();
 
         handles.push(thread::spawn(move || {
-            let sender = UdpSender::new("127.0.0.1:13345", simpl_formatter, rx);
+            let sender = UdpSender::new("127.0.0.1:13345", simple_formatter, rx);
             sender.run_sender();
         }));
 

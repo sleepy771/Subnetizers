@@ -1,5 +1,5 @@
-use std::sync::mpsc::Sender;
 use parsers::StreamParser;
+use std::sync::mpsc::Sender;
 
 pub type IpSender = Sender<Vec<[u8; 4]>>;
 
@@ -8,30 +8,28 @@ pub trait Listener {
 }
 
 
-pub enum ListenerCreds {
+pub enum ListenerCredentials {
     Kafka(Vec<String>, String, String),
-    UdpServer(String)
+    UdpServer(String),
 }
 
-pub fn listener_factory(creds: ListenerCreds, parser: StreamParser, sender: IpSender)
+pub fn listener_factory(creds: ListenerCredentials, parser: StreamParser, sender: IpSender)
                         -> Box<Listener + 'static>
 {
     match creds {
-        ListenerCreds::Kafka(hosts, topic, group) => {
+        ListenerCredentials::Kafka(hosts, topic, group) => {
             Box::new(kafka::KafkaListener::new(hosts, topic, group, parser, sender))
-        },
-        ListenerCreds::UdpServer(host) => {
+        }
+        ListenerCredentials::UdpServer(host) => {
             Box::new(udp::UdpServer::new(host.as_str(), parser, sender).unwrap())
         }
     }
 }
 
-
 pub mod kafka {
-    use super::{Listener, StreamParser, IpSender};
-
     use kafka::consumer::{Consumer, FetchOffset, GroupOffsetStorage};
     use std::sync::mpsc::Sender;
+    use super::{IpSender, Listener, StreamParser};
 
     pub struct KafkaListener {
         consumer: Consumer,
@@ -52,10 +50,9 @@ pub mod kafka {
                     .create()
                     .unwrap(),
                 value_parser,
-                sender
+                sender,
             }
         }
-
     }
 
     impl Listener for KafkaListener {
@@ -71,14 +68,14 @@ pub mod kafka {
 }
 
 pub mod udp {
-    use super::{Listener, StreamParser, IpSender};
     use std::net::UdpSocket;
     use std::sync::mpsc::Sender;
+    use super::{IpSender, Listener, StreamParser};
 
     pub struct UdpServer {
         socket: UdpSocket,
         sender: IpSender,
-        parser: StreamParser
+        parser: StreamParser,
     }
 
 
@@ -87,7 +84,7 @@ pub mod udp {
             match UdpSocket::bind(address) {
                 Ok(socket) => {
                     Ok(UdpServer { socket, sender, parser })
-                },
+                }
                 Err(err) => Err(format!("Can not start UdpServer, reason: {}", err))
             }
         }
@@ -104,12 +101,12 @@ pub mod udp {
             loop {
                 match self.socket.recv_from(&mut buffer) {
                     Ok((size, addr)) => {
-                        if &buffer[0 .. size] == "STOP!".as_bytes() {
+                        if &buffer[0..size] == "STOP!".as_bytes() {
                             break;
                         }
-                        let data = (self.parser)(&buffer[0 .. size]).unwrap();
+                        let data = (self.parser)(&buffer[0..size]).unwrap();
                         self.sender.send(data).unwrap();
-                    },
+                    }
                     Err(err) => {
                         panic!("UdpServer stoped working due to: {}", err);
                     }
@@ -120,8 +117,8 @@ pub mod udp {
 
     #[cfg(test)]
     mod tests {
+        use parsers::simple_parser;
         use super::*;
-        use parsers::simpl_parser;
 
         #[test]
         fn test_UdpServer_listener() {
@@ -133,7 +130,7 @@ pub mod udp {
             let mut handles = Vec::new();
 
             handles.push(thread::spawn(move || {
-                let mut serv = UdpServer::new("127.0.0.1:12345", simpl_parser, tx).unwrap();
+                let mut serv = UdpServer::new("127.0.0.1:12345", simple_parser, tx).unwrap();
                 serv.listen();
             }));
 
@@ -154,7 +151,6 @@ pub mod udp {
                 handle.join().unwrap();
             }
             assert_eq!(vec![[192, 168, 1, 1], [127, 0, 0, 1], [172, 16, 100, 10]], data);
-
         }
     }
 }
