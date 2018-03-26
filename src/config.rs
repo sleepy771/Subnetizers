@@ -26,6 +26,15 @@ pub struct Senders {
     sender: String,
     #[serde(default = "default_udp_sender")]
     udp_address: Option<String>,
+    kafka: Option<KafkaSender>
+}
+
+#[derive(PartialEq, Eq, Serialize, Deserialize, Debug, Clone)]
+pub struct KafkaSender {
+    hosts: Vec<String>,
+    topic: String,
+    #[serde(default = "default_ack_duration")]
+    ack_duration_seconds: u64
 }
 
 #[derive(Deserialize, PartialEq, Eq, Debug, Clone)]
@@ -51,7 +60,8 @@ impl Settings {
             },
             sender: Senders {
                 sender: default_sender(),
-                udp_address: default_udp_sender()
+                udp_address: default_udp_sender(),
+                kafka: None
             },
             publish_timer: thrity_seconds(),
             auto_add_zeroed: default_add_zeroed(),
@@ -137,4 +147,8 @@ fn default_sender() -> String {
 
 fn default_receiver() -> String {
     "udp".to_owned()
+}
+
+fn default_ack_duration() -> u64 {
+    1_u64
 }

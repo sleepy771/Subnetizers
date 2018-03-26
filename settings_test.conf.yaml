@@ -4,10 +4,15 @@ publish_timer: 30
 receiver:
   receiver: udp
   udp_address: 127.0.0.1:8080
-#  kafka_hosts: [ localhost:9092 ]
-#  kafka_topic: ips
-#  kafka_group: group
+#  kafka:
+#    hosts: [ localhost:9092 ]
+#    topic: ips-in
+#    group: ips
 sender:
   sender: udp
   udp_address: 127.0.0.1:8081
+#  kafka:
+#    hosts: [ localhost:9092 ]
+#    topic: ips-out
+#    ack_duration: 1
 
