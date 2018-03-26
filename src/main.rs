@@ -7,7 +7,7 @@ extern crate serde_derive;
 extern crate serde_yaml;
 
 mod subnet_tree;
-mod udp;
+mod senders;
 mod config;
 mod ipagg;
 mod parsers;

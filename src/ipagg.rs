@@ -10,7 +10,7 @@ use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
 use subnet_tree::{IPTree, OctetNode};
-use udp::UdpSender;
+use senders::UdpSender;
 
 pub struct IpAggregator {
     handles: Vec<JoinHandle<()>>,
