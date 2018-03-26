@@ -8,13 +8,32 @@ pub trait Listener {
 }
 
 
+pub enum ListenerCreds {
+    Kafka(Vec<String>, String, String),
+    UdpServer(String)
+}
+
+pub fn listener_factory(creds: ListenerCreds, parser: StreamParser, sender: IpSender)
+                        -> Box<Listener + 'static>
+{
+    match creds {
+        ListenerCreds::Kafka(hosts, topic, group) => {
+            Box::new(kafka::KafkaListener::new(hosts, topic, group, parser, sender))
+        },
+        ListenerCreds::UdpServer(host) => {
+            Box::new(udp::UdpServer::new(host.as_str(), parser, sender).unwrap())
+        }
+    }
+}
+
+
 pub mod kafka {
     use super::{Listener, StreamParser, IpSender};
 
     use kafka::consumer::{Consumer, FetchOffset, GroupOffsetStorage};
     use std::sync::mpsc::Sender;
 
-    struct KafkaListener {
+    pub struct KafkaListener {
         consumer: Consumer,
         value_parser: StreamParser,
         sender: IpSender,
@@ -22,13 +41,13 @@ pub mod kafka {
 
 
     impl KafkaListener {
-        pub fn new(hosts: Vec<String>, topic: &str, group: &str,
+        pub fn new(hosts: Vec<String>, topic: String, group: String,
                    value_parser: StreamParser, sender: IpSender) -> KafkaListener {
             KafkaListener {
                 consumer: Consumer::from_hosts(hosts)
-                    .with_topic_partitions(topic.to_owned(), &[0, 1])
+                    .with_topic_partitions(topic, &[0, 1])
                     .with_fallback_offset(FetchOffset::Earliest)
-                    .with_group(group.to_owned())
+                    .with_group(group)
                     .with_offset_storage(GroupOffsetStorage::Kafka)
                     .create()
                     .unwrap(),
@@ -101,6 +120,7 @@ pub mod udp {
 
     #[cfg(tests)]
     mod tests {
+        // FIXME tests are not executed
         use super::*;
         use parsers::simpl_parser;
 
@@ -114,7 +134,7 @@ pub mod udp {
             let mut handles = Vec::new();
 
             handles.push(thread::spawn(move || {
-                let serv = UdpServer::new("127.0.0.1:12345", simpl_parser, tx).unwrap();
+                let mut serv = UdpServer::new("127.0.0.1:12345", simpl_parser, tx).unwrap();
                 serv.listen();
             }));
 
