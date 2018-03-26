@@ -4,6 +4,10 @@ use std::net::UdpSocket;
 use std::str::FromStr;
 use std::sync::mpsc::Receiver;
 
+trait Sender {
+    fn run_sender(&self) -> Result<(), String>;
+}
+
 
 pub struct UdpSender {
     socket: UdpSocket,

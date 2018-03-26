@@ -328,6 +328,10 @@ impl IPTree {
         self.octets.insert(octet, Box::new(StandardNode::new(octet, 1)));
     }
 
+    fn clear(&mut self) -> () {
+        self.octets = HashMap::new(); // just curious if this will be enough
+    }
+
     pub fn list_cidr(&self) -> Vec<String> {
         self.recursive_list(0, 0).iter().map(|&(ip, mask)| {
             format!("{}.{}.{}.{}/{}", ip >> 24, (ip >> 16) & 0xff, (ip >> 8) & 0xff, ip & 0xff, mask)
