@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import socket
 import random
+import time
 
 UDP_IP = '127.0.0.1'
 UDP_PORT = 6788
@@ -22,4 +23,9 @@ if __name__ == '__main__':
     soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     while True:
-        soc.sendto(bytes(make_dgram_msg(), encoding='ascii'), (UDP_IP, UDP_PORT))
+        start = time.time()
+        for _ in range(10000):
+            soc.sendto(bytes(make_dgram_msg(), encoding='ascii'), (UDP_IP, UDP_PORT))
+        end = time.time()
+        dur = (end - start) * 1000
+        print('Sent 30000 ipaddresses in %d (ms), what is %d (us) per 1 ip address sent' % (dur, dur * 1000 / 300000))
