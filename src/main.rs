@@ -11,6 +11,8 @@ mod subnet_tree;
 mod udp;
 mod config;
 mod ipagg;
+mod kafka;
+mod parsers;
 
 use config::{Settings, load_from_default_location, load_from_file};
 use std::env::home_dir;

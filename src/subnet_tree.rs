@@ -25,8 +25,8 @@ pub struct StandardNode {
 impl StandardNode {
     pub fn new(octet: u8, level: u8) -> StandardNode {
         StandardNode {
-            octet: octet,
-            level: level,
+            octet,
+            level,
             heap: [0; 8],
             subnodes: HashMap::new()
         }
@@ -139,15 +139,15 @@ impl OctetNode for StandardNode {
         }
     }
 
-    fn get_node(&mut self, octet: &u8) -> Option<&mut Box<OctetNode>> {
-        self.subnodes.get_mut(octet)
-    }
-
     fn contains(&self, octet: &u8) -> bool {
         if self._is_subnet(octet.clone()) {
             return true;
         }
         self.subnodes.contains_key(octet)
+    }
+
+    fn get_node(&mut self, octet: &u8) -> Option<&mut Box<OctetNode>> {
+        self.subnodes.get_mut(octet)
     }
 
     fn is_subnet(&self) -> bool {
@@ -199,7 +199,7 @@ pub struct LastNode {
 impl LastNode {
     pub fn new(octet: u8) -> LastNode {
         LastNode {
-            octet: octet,
+            octet,
             heap: [0u64; 8]
         }
     }
@@ -267,10 +267,6 @@ impl OctetNode for LastNode {
         self.expand(octets[0]);
     }
 
-    fn get_node(&mut self, _: &u8) -> Option<&mut Box<OctetNode>> {
-        None
-    }
-
     fn contains(&self, octet: &u8) -> bool {
         let mut pos = octet.clone() as u16 + 256u16;
         loop {
@@ -283,6 +279,10 @@ impl OctetNode for LastNode {
                 return false;
             }
         };
+    }
+
+    fn get_node(&mut self, _: &u8) -> Option<&mut Box<OctetNode>> {
+        None
     }
 
     fn is_subnet(&self) -> bool {
@@ -344,12 +344,12 @@ impl OctetNode for IPTree {
         self.octets.get_mut(&octet[0]).unwrap().add(&octet[1..]);
     }
 
-    fn get_node(&mut self, octet: &u8) -> Option<&mut Box<OctetNode>> {
-        self.octets.get_mut(&octet)
-    }
-
     fn contains(&self, octet: &u8) -> bool {
         self.octets.contains_key(&octet)
+    }
+
+    fn get_node(&mut self, octet: &u8) -> Option<&mut Box<OctetNode>> {
+        self.octets.get_mut(&octet)
     }
 
     fn is_subnet(&self) -> bool {

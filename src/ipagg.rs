@@ -1,5 +1,6 @@
 use subnet_tree::{IPTree, OctetNode};
-use udp::{UdpServer, simpl_parser, UdpSender, simpl_formatter};
+use udp::{UdpServer, UdpSender, simpl_formatter};
+use parsers::simpl_parser;
 use std::thread::JoinHandle;
 use std::thread;
 use std::sync::{Arc, Mutex};
