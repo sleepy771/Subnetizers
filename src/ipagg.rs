@@ -96,7 +96,7 @@ impl IpAggregator {
     }
 
     fn _start_push_result_thread(&mut self, receiver: Receiver<Vec<String>>) {
-        let send_to = SETTINGS.get_udp_sender_to().unwrap();
+        let send_to = SETTINGS.get_udp_send_to().unwrap();
         self.handles.push(thread::spawn(move || {
             let sender = UdpSender::new(send_to.as_str(), simple_formatter, receiver);
             sender.run_sender();

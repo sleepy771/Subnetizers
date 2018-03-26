@@ -105,7 +105,7 @@ impl StandardNode {
                                                  LastNode::new_with_opts(
                                                      octet,
                                                      SETTINGS.add_zeroed(),
-                                                     SETTINGS.add_boradcast(),
+                                                     SETTINGS.add_broadcast(),
                                                  )
                                              ));
                     } else {

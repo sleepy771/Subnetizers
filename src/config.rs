@@ -4,18 +4,34 @@ use std::path::Path;
 
 const SETTINGS_FILE_NAME: &'static str = "settings.yaml";
 
+#[derive(PartialEq, Eq, Serialize, Deserialize, Debug, Clone)]
+pub struct Receivers {
+    #[serde(default = "default_receiver")]
+    receiver: String,
+    #[serde(default = "default_udp_receiver")]
+    udp_address: Option<String>,
+    kafka: Option<KafkaReceiver>
+}
 
 #[derive(PartialEq, Eq, Serialize, Deserialize, Debug, Clone)]
-pub struct UdpSettings {
-    #[serde(default = "default_udp_receiver")]
-    receiver_address: Option<String>,
+pub struct KafkaReceiver {
+    hosts: Vec<String>,
+    topic: String,
+    group: String
+}
+
+#[derive(PartialEq, Eq, Serialize, Deserialize, Debug, Clone)]
+pub struct Senders {
+    #[serde(default = "default_sender")]
+    sender: String,
     #[serde(default = "default_udp_sender")]
-    send_to: Option<String>,
+    udp_address: Option<String>,
 }
 
 #[derive(Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Settings {
-    udp: Option<UdpSettings>,
+    receiver: Receivers,
+    sender: Senders,
     #[serde(default = "thrity_seconds")]
     publish_timer: u32,
 
@@ -28,20 +44,18 @@ pub struct Settings {
 impl Settings {
     pub fn defualt() -> Settings {
         Settings {
-            udp: Some(UdpSettings {
-                receiver_address: default_udp_receiver(),
-                send_to: default_udp_sender(),
-            }),
+            receiver: Receivers {
+                receiver: default_receiver(),
+                udp_address: default_udp_receiver(),
+                kafka: None
+            },
+            sender: Senders {
+                sender: default_sender(),
+                udp_address: default_udp_sender()
+            },
             publish_timer: thrity_seconds(),
             auto_add_zeroed: default_add_zeroed(),
             auto_add_broadcast: default_add_broadcast(),
-        }
-    }
-
-    pub fn is_using_udp(&self) -> bool {
-        match self.udp {
-            Some(_) => true,
-            None => false
         }
     }
 
@@ -53,32 +67,16 @@ impl Settings {
         self.auto_add_zeroed
     }
 
-    pub fn add_boradcast(&self) -> bool {
+    pub fn add_broadcast(&self) -> bool {
         self.auto_add_broadcast
     }
 
     pub fn get_udp_bind_address(&self) -> Option<&String> {
-        match self.udp {
-            Some(ref udp_settings) => {
-                match udp_settings.receiver_address {
-                    Some(ref addr) => Some(addr),
-                    None => None
-                }
-            }
-            None => None
-        }
+        self.receiver.udp_address.as_ref()
     }
 
-    pub fn get_udp_sender_to(&self) -> Option<&String> {
-        match self.udp {
-            Some(ref udp_settings) => {
-                match udp_settings.send_to {
-                    Some(ref addr) => Some(addr),
-                    None => None
-                }
-            }
-            None => None
-        }
+    pub fn get_udp_send_to(&self) -> Option<&String> {
+        self.sender.udp_address.as_ref()
     }
 
     pub fn get_publish_timer(&self) -> u32 {
@@ -131,4 +129,12 @@ fn default_udp_sender() -> Option<String> {
 
 fn thrity_seconds() -> u32 {
     30
+}
+
+fn default_sender() -> String {
+    "udp".to_owned()
+}
+
+fn default_receiver() -> String {
+    "udp".to_owned()
 }

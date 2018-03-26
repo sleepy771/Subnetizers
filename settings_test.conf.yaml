@@ -1,6 +1,10 @@
 auto_use_zeroed: true/home/filip/develop/rust/Subnetizers
 auto_use_broadcast: true
 publish_timer: 30
-udp:
-        receiver_address: 127.0.0.1:8080
-        send_to: 127.0.0.1:8081
+receiver:
+  receiver: udp
+  udp_address: 127.0.0.1:8080
+sender:
+  sender: udp
+  udp_address: 127.0.0.1:8081
+
