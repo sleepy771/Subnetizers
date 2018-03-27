@@ -942,6 +942,27 @@ mod tests {
     }
 
     #[test]
+    fn test_standard_node_walk_single_nested() {
+        let subnodes = {
+            let mut nodes: HashMap<u8, Box<OctetNode>> = HashMap::new();
+            nodes.insert(1_u8, Box::new(LastNode {
+                octet: 1,
+                heap: [0, 0, 0, 0, 2, 0, 0, 0],
+            }));
+            nodes
+        };
+        let node = StandardNode {
+            octet: 168,
+            level: 0, // No love for level
+            heap: [0; 8],
+            subnodes,
+        };
+        let mut iter = node.walk(make_prefix([192, 0, 0, 0]), 8);
+        assert_eq!(Some((make_prefix([192, 168, 1, 1]), 32)), iter.next());
+        assert_eq!(None, iter.next());
+    }
+
+    #[test]
     fn test_floor_log2() {
         assert_eq!(floor_log2(2), Ok(1));
         assert_eq!(floor_log2(4), Ok(2));
