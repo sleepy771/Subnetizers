@@ -446,13 +446,6 @@ impl IPTree {
         self.octets = HashMap::new(); // just curious if this will be enough
     }
 
-    // TODO create iterator instead of Vec<String>
-    pub fn list_cidr(&self) -> Vec<String> {
-        self.recursive_list(0, 0).iter().map(|&(ip, mask)| {
-            format!("{}.{}.{}.{}/{}", ip >> 24, (ip >> 16) & 0xff, (ip >> 8) & 0xff, ip & 0xff, mask)
-        }).collect()
-    }
-
     pub fn add(&mut self, octet: &[u8]) -> () {
         if octet.len() != 4 {
             return;
@@ -461,29 +454,15 @@ impl IPTree {
         self.octets.get_mut(&octet[0]).unwrap().add(&octet[1..]);
     }
 
-    fn contains(&self, octet: &u8) -> bool {
+    pub fn contains(&self, octet: u8) -> bool {
         self.octets.contains_key(&octet)
     }
 
-    fn get_node(&mut self, octet: &u8) -> Option<&mut Box<OctetNode>> {
+    pub fn get_node(&mut self, octet: u8) -> Option<&mut Box<OctetNode>> {
         self.octets.get_mut(&octet)
     }
 
-    fn is_subnet(&self) -> bool {
-        false
-    }
-
-    fn recursive_list(&self, _prefix: u32, _: u8) -> Vec<(u32, u8)> {
-        let mut cidrs: Vec<(u32, u8)> = Vec::new();
-
-        for node in self.octets.values() {
-            cidrs.append(&mut node.recursive_list(0, 0));
-        }
-
-        cidrs
-    }
-
-    fn walk<'a>(&'a self) -> Box<Iterator<Item=(u32, u8)> + 'a> {
+    pub fn walk<'a>(&'a self) -> Box<Iterator<Item=(u32, u8)> + 'a> {
         let mut iter_stack: LinkedList< Box< Iterator<Item=(u32, u8)> + 'a>> = LinkedList::new();
         for node in self.octets.values() {
             iter_stack.push_back(node.walk(0, 0));
@@ -504,7 +483,7 @@ impl <'a>Iterator for TreeIter<'a> {
     type Item = (u32, u8);
 
     fn next(&mut self) -> Option<(u32, u8)> {
-        let mut reassign = false;
+        let mut reassign;
         match self.cursor {
             Some(ref mut iter) => {
                 match iter.next() {

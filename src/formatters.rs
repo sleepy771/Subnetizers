@@ -1,6 +1,6 @@
-pub type AggFormatter = fn(Vec<String>) -> Vec<String>;
+pub type AggFormatter = fn(Vec<(u32, u8)>) -> Vec<String>;
 
-pub fn simple_formatter(cidrs: Vec<String>) -> Vec<String> {
+pub fn simple_formatter(cidrs: Vec<(u32, u8)>) -> Vec<String> {
     let mut from: usize = 0;
     let mut concated_msg: Vec<String> = Vec::new();
     while from < cidrs.len() - 1 {
@@ -11,26 +11,33 @@ pub fn simple_formatter(cidrs: Vec<String>) -> Vec<String> {
     concated_msg
 }
 
-fn _concat_to_size(strings: &[String], max_size: usize) -> (String, usize) {
+fn _concat_to_size(strings: &[(u32, u8)], max_size: usize) -> (String, usize) {
     let mut tmp_size: usize = 0;
     let mut chunk_last_idx: usize = 0;
     let mut use_entire_slice = true;
-    for (idx, str_) in strings.iter().enumerate() {
+    for (idx, cidr) in strings.iter().enumerate() {
+        let cidr_str = make_cidr_ip_string(cidr);
         chunk_last_idx = idx;
         if tmp_size > 0 {
             tmp_size += 1;
         }
-        if str_.len() + tmp_size > max_size {
+        if cidr_str.len() + tmp_size > max_size {
             use_entire_slice = false;
             break;
         }
-        tmp_size += str_.len();
+        tmp_size += cidr_str.len();
     }
     if use_entire_slice {
-        (strings.join(" "), strings.len())
+        let cidr_ips: Vec<String> = strings.iter().map(|cidr| {make_cidr_ip_string(cidr)}).collect();
+        (cidr_ips.join(" "), strings.len())
     } else {
-        (strings[..chunk_last_idx].join(" "), chunk_last_idx)
+        let cidr_ips: Vec<String> = strings[..chunk_last_idx].iter().map(|cidr|{make_cidr_ip_string(cidr)}).collect();
+        (cidr_ips.join(" "), chunk_last_idx)
     }
+}
+
+fn make_cidr_ip_string(cidr: &(u32, u8)) -> String {
+    format!("{}.{}.{}.{}/{}", cidr.0 >> 24, (cidr.0 >> 16) & 0xff, (cidr.0 >> 8) & 0xff, cidr.0 & 0xff, cidr.1)
 }
 
 #[cfg(test)]

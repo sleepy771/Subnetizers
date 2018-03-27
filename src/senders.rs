@@ -11,14 +11,14 @@ trait Sender {
 
 pub struct UdpSender {
     socket: UdpSocket,
-    receiver: Receiver<Vec<String>>,
+    receiver: Receiver<Vec<(u32, u8)>>,
     formatter: AggFormatter,
     send_to: String,
 }
 
 
 impl UdpSender {
-    pub fn new(send_to: &str, formatter: AggFormatter, receiver: Receiver<Vec<String>>) -> UdpSender {
+    pub fn new(send_to: &str, formatter: AggFormatter, receiver: Receiver<Vec<(u32, u8)>>) -> UdpSender {
         match UdpSocket::bind("127.0.0.1:43211") {
             Ok(socket) => {
                 UdpSender {
@@ -35,11 +35,8 @@ impl UdpSender {
     pub fn run_sender(&self) {
         loop {
             match self.receiver.recv() {
-                Ok(ip_vec) => {
-                    if ip_vec == vec!["STOP!".to_string()] {
-                        break;
-                    }
-                    for ip_string in (self.formatter)(ip_vec) {
+                Ok(cidr_vec) => {
+                    for ip_string in (self.formatter)(cidr_vec) {
                         self.socket.send_to(ip_string.as_bytes(), self.send_to.as_str()).unwrap();
                     }
                 }
@@ -57,12 +54,12 @@ pub mod kafka {
     pub struct KafkaProducer {
         producer: Producer,
         formatter: AggFormatter,
-        receiver: Receiver<Vec<String>>,
+        receiver: Receiver<Vec<(u32, u8)>>,
         topic: String,
     }
 
     impl KafkaProducer {
-        pub fn new(hosts: Vec<String>, ack_timeout: Duration, topic: String, formatter: AggFormatter, receiver: Receiver<Vec<String>>)
+        pub fn new(hosts: Vec<String>, ack_timeout: Duration, topic: String, formatter: AggFormatter, receiver: Receiver<Vec<(u32, u8)>>)
             -> KafkaProducer {
             KafkaProducer {
                 producer: Producer::from_hosts(hosts).with_ack_timeout(ack_timeout).with_required_acks(RequiredAcks::One).create().unwrap(),
@@ -78,9 +75,6 @@ pub mod kafka {
             loop {
                 match self.receiver.recv() {
                     Ok(ip_vec) => {
-                        if ip_vec == vec!["STOP!".to_string()] {
-                            break;
-                        }
                         for ip_string in (self.formatter)(ip_vec) {
                             self.producer.send(&Record::from_value(self.topic.as_ref(), ip_string.as_bytes())).unwrap();
                         }

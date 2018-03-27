@@ -74,7 +74,7 @@ impl IpAggregator {
         }));
     }
 
-    fn _start_tree_lister_thread(&mut self, sender: Sender<Vec<String>>) {
+    fn _start_tree_lister_thread(&mut self, sender: Sender<Vec<(u32, u8)>>) {
         let tree_ref_mutex = Arc::clone(&self.tree);
         let stoper_mutex = Arc::clone(&self.show_stopper);
         let sleep_dur: Duration = Duration::from_secs(SETTINGS.get_publish_timer() as u64);
@@ -87,15 +87,17 @@ impl IpAggregator {
                     break;
                 }
                 thread::sleep(sleep_dur);
-                let aggregations: Vec<String> = {
-                    (*tree_ref_mutex.lock().unwrap()).list_cidr()
+                let aggregations: Vec<(u32, u8)> = {
+                    let tree_ptr = (tree_ref_mutex.lock().unwrap());
+                    let ipvec: Vec<(u32, u8)> = tree_ptr.walk().collect();
+                    ipvec
                 };
                 sender.send(aggregations).unwrap();
             }
         }));
     }
 
-    fn _start_push_result_thread(&mut self, receiver: Receiver<Vec<String>>) {
+    fn _start_push_result_thread(&mut self, receiver: Receiver<Vec<(u32, u8)>>) {
         let send_to = SETTINGS.get_udp_send_to().unwrap();
         self.handles.push(thread::spawn(move || {
             let sender = UdpSender::new(send_to.as_str(), simple_formatter, receiver);
