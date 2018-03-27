@@ -372,12 +372,13 @@ impl OctetNode for LastNode {
     }
 
     fn walk<'a>(&'a self, prefix: u32, mask: u8) -> Box<Iterator<Item=(u32, u8)> + 'a> {
-        let cur_prefix: u32 = prefix | (self.octet as u32) << (32 - mask);
+        let cur_prefix: u32 = prefix | (self.octet as u32) << (24 - mask);
+        let cur_mask: u8 = mask + 8;
         Box::new(LastNodeIterator {
             heap: self.get_heap_ref(),
             idx: 0,
             prefix: cur_prefix,
-            mask,
+            mask: cur_mask,
         })
     }
 }
@@ -646,7 +647,7 @@ mod tests {
             octet: 0,
             heap: [0, 0, 0, 0, 0, 0, 0, 0],
         };
-        let mut iter = node.walk(0, 24);
+        let mut iter = node.walk(0, 16);
         assert_eq!(None, iter.next())
     }
 
@@ -656,7 +657,7 @@ mod tests {
             octet: 0,
             heap: [0, 0, 0, 0, 2, 0, 0, 0],
         };
-        let mut iter = node.walk(0, 24);
+        let mut iter = node.walk(0, 16);
         assert_eq!(Some((1, 32)), iter.next());
         assert_eq!(None, iter.next())
     }
@@ -667,7 +668,7 @@ mod tests {
             octet: 1,
             heap: [0, 0, 0, 0, 2 | 8 | 32, 0, 0, 0]
         };
-        let mut iter = node.walk(make_prefix([192, 168, 0, 0]), 24);
+        let mut iter = node.walk(make_prefix([192, 168, 0, 0]), 16);
         assert_eq!(Some((make_prefix([192, 168, 1, 1]), 32)), iter.next());
         assert_eq!(Some((make_prefix([192, 168, 1, 3]), 32)), iter.next());
         assert_eq!(Some((make_prefix([192, 168, 1, 5]), 32)), iter.next());
@@ -898,6 +899,46 @@ mod tests {
         assert!(!node.subnodes.contains_key(&1));
         assert!(!node.subnodes.contains_key(&2));
         assert!(!node.subnodes.contains_key(&3));
+    }
+
+    #[test]
+    fn test_standard_node_walk_empty() {
+        let node = StandardNode {
+            octet: 0,
+            level: 0,
+            heap: [0; 8],
+            subnodes: HashMap::new(),
+        };
+        let mut iter = node.walk(0, 0);
+        assert_eq!(None, iter.next());
+    }
+
+    #[test]
+    fn test_standard_node_walk_single_heap() {
+        let node = StandardNode {
+            octet: 168,
+            level: 0, // No love for level
+            heap: [0, 0, 0, 0, 2, 0, 0, 0],
+            subnodes: HashMap::new(),
+        };
+        let mut iter = node.walk(make_prefix([192, 0, 0, 0]), 8);
+        assert_eq!(Some((make_prefix([192, 168, 1, 0]), 24)), iter.next());
+        assert_eq!(None, iter.next());
+    }
+
+    #[test]
+    fn test_standard_node_walk_multiple_heap() {
+        let node = StandardNode {
+            octet: 168,
+            level: 0, // No love for level
+            heap: [0, 0, 0, 0, 2 | 8 | 32, 0, 0, 0],
+            subnodes: HashMap::new(),
+        };
+        let mut iter = node.walk(make_prefix([192, 0, 0, 0]), 8);
+        assert_eq!(Some((make_prefix([192, 168, 1, 0]), 24)), iter.next());
+        assert_eq!(Some((make_prefix([192, 168, 3, 0]), 24)), iter.next());
+        assert_eq!(Some((make_prefix([192, 168, 5, 0]), 24)), iter.next());
+        assert_eq!(None, iter.next());
     }
 
     #[test]
