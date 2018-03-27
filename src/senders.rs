@@ -36,11 +36,14 @@ impl UdpSender {
         loop {
             match self.receiver.recv() {
                 Ok(cidr_vec) => {
+                    if cidr_vec == vec![(0, 32)] {
+                        break;
+                    }
                     for ip_string in (self.formatter)(cidr_vec) {
                         self.socket.send_to(ip_string.as_bytes(), self.send_to.as_str()).unwrap();
                     }
                 }
-                Err(reason) => panic!("Receiver stopped working!")
+                Err(reason) => panic!("Receiver stopped working: {}", reason)
             }
         };
     }
@@ -91,6 +94,10 @@ mod tests {
     use super::*;
     use std::str;
 
+    fn make_prefix(octets: [u8; 4]) -> u32 {
+        (octets[0] as u32) << 24 | (octets[1] as u32) << 16 | (octets[2] as u32) << 8 | octets[3] as u32
+    }
+
     #[test]
     fn test_UdpSender_run_sender() {
         use std::thread;
@@ -99,15 +106,18 @@ mod tests {
         use formatters::simple_formatter;
 
         let data = vec![
-            "192.168.2.1/32".to_string(),
-            "172.16.100.1/24".to_string(),
-            "10.10.1.1/16".to_string()];
+            (make_prefix([192, 168, 2, 1]), 32),
+            (make_prefix([172, 16, 100, 1]), 24),
+            (make_prefix([10, 10, 1, 1]), 16)];
 
         let mut handles = Vec::new();
 
         let (mut udp_listener_tx, mut udp_listener_rx) = channel();
         handles.push(thread::spawn(move || {
             let mut socket = UdpSocket::bind("127.0.0.1:13345").unwrap();
+
+            // bind lock
+            udp_listener_tx.send("".to_owned()).unwrap();
 
             let mut buffer: [u8; 2048] = [0; 2048];
 
@@ -120,7 +130,8 @@ mod tests {
             }
         }));
 
-        thread::sleep_ms(3000);
+        // blocking until udp socket is not bound
+        udp_listener_rx.recv().unwrap();
 
         let (mut tx, mut rx) = channel();
 
@@ -130,14 +141,14 @@ mod tests {
         }));
 
         tx.send(data).unwrap();
-        tx.send(vec!["STOP!".to_string()]);
-        thread::sleep_ms(5000);
-        drop(tx);
-
+        tx.send(vec![(0_u32, 32_u8)]).unwrap();
         let recv_data = udp_listener_rx.recv().unwrap();
-        drop(udp_listener_rx);
 
         assert_eq!("192.168.2.1/32 172.16.100.1/24 10.10.1.1/16".to_string(), recv_data);
+
+        drop(tx);
+        drop(udp_listener_rx);
+
 
         for handle in handles {
             handle.join().unwrap();

@@ -52,21 +52,12 @@ impl IpAggregator {
 
     fn _start_tree_updater_thread(&mut self, receiver: Receiver<Vec<[u8; 4]>>) {
         let tree_ref_mutex = Arc::clone(&self.tree);
-        let stoper_mutex = Arc::clone(&self.show_stopper);
         self.handles.push(thread::spawn(move || {
             loop {
-                let stop: bool = {
-                    *stoper_mutex.lock().unwrap()
-                };
-                if stop {
-                    break;
-                }
                 match receiver.recv() {
                     Ok(data) => {
                         let mut tree_ref = tree_ref_mutex.lock().unwrap();
-                        for ip_address in data {
-                            (*tree_ref).add(&ip_address);
-                        }
+                        data.into_iter().for_each(move |octet| { (*tree_ref).add(&octet) });
                     }
                     Err(e) => panic!("IpTree updater thread paniced: {}", e)
                 }
@@ -87,12 +78,18 @@ impl IpAggregator {
                     break;
                 }
                 thread::sleep(sleep_dur);
-                let aggregations: Vec<(u32, u8)> = {
+                {
                     let tree_ptr = (tree_ref_mutex.lock().unwrap());
-                    let ipvec: Vec<(u32, u8)> = tree_ptr.walk().collect();
-                    ipvec
+                    let mut tree_iter = tree_ptr.walk();
+                    loop {
+                        let ipvec: Vec<(u32, u8)> = (&mut tree_iter).take(1000).collect();
+                        let vec_len = ipvec.len();
+                        sender.send(ipvec).unwrap();
+                        if vec_len < 1000 {
+                            break;
+                        }
+                    }
                 };
-                sender.send(aggregations).unwrap();
             }
         }));
     }
