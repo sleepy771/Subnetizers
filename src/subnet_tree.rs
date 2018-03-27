@@ -1,5 +1,6 @@
 use SETTINGS;
-use std::collections::HashMap;
+use std::collections::{HashMap, LinkedList};
+use std::iter::{Iterator, IntoIterator};
 
 
 pub trait OctetNode: Send {
@@ -12,6 +13,8 @@ pub trait OctetNode: Send {
     fn is_subnet(&self) -> bool;
 
     fn recursive_list(&self, prefix: u32, prefix_length: u8) -> Vec<(u32, u8)>;
+
+    fn walk<'a>(&'a self, prefix: u32, mask: u8) -> Box<Iterator<Item=(u32, u8)> + 'a>;
 }
 
 pub struct StandardNode {
@@ -30,6 +33,10 @@ impl StandardNode {
             heap: [0; 8],
             subnodes: HashMap::new(),
         }
+    }
+
+    fn get_heap_ref<'a>(&'a self) -> &'a [u64; 8] {
+        &self.heap
     }
 
     fn _has_subnet(&self, subnet: u16) -> bool {
@@ -167,6 +174,23 @@ impl OctetNode for StandardNode {
 
         prefix_vector
     }
+
+    fn walk<'a>(&'a self, prefix: u32, mask: u8) -> Box<Iterator<Item=(u32, u8)> + 'a> {
+        let cur_prefix = prefix | ((self.octet as u32) << (24 - mask));
+        let cur_mask = mask + 8;
+        let mut node_iters: LinkedList<Box<Iterator<Item=(u32, u8)> + 'a>> = LinkedList::new();
+        for node in self.subnodes.values() {
+            node_iters.push_back(Box::new(node.walk(cur_prefix, cur_mask)));
+        }
+        Box::new(MoonWalker {
+            heap: self.get_heap_ref(),
+            idx: 0,
+            prefix: cur_prefix,
+            mask: cur_mask,
+            stack: node_iters,
+            node_iter: None,
+        })
+    }
 }
 
 fn make_cidr(prefix: u32, prefix_length: u8, heap: &[u64; 8]) -> Vec<(u32, u8)> {
@@ -188,6 +212,55 @@ fn _calculate_partial_cidr(cidr_bit: u16) -> (u8, u8) {
     let cidr_padding = 256 >> partial_mask;
     let range_idx = cidr_bit & (mask_bit_complement - 1);
     ((cidr_padding * range_idx) as u8, partial_mask)
+}
+
+struct MoonWalker<'a> {
+    heap: &'a [u64; 8],
+    idx: u16,
+    prefix: u32,
+    mask: u8,
+    stack: LinkedList<Box<Iterator<Item=(u32, u8)> + 'a>>,
+    node_iter: Option<Box<Iterator<Item=(u32, u8)> + 'a>>,
+}
+
+impl <'a>Iterator for MoonWalker<'a> {
+    type Item = (u32, u8);
+
+    fn next(&mut self) -> Option<(u32, u8)> {
+        let mut match_ = false;
+        while ! match_ && self.idx < 511 {
+            self.idx += 1;
+            let (idx, flag) = to_position(self.idx).unwrap();
+            match_ = is_flag_set(self.heap[idx], flag);
+        }
+        if match_ {
+            let (octet, p_mask) = _calculate_partial_cidr(self.idx);
+            let ip_address = self.prefix | (octet as u32) << (24 - self.mask);
+            return Some((ip_address, self.mask + p_mask));
+        }
+
+        let mut reassign = false;
+        match self.node_iter {
+            Some(ref mut iter) => {
+                match iter.next() {
+                    Some((ip, mask)) => return Some((ip, mask)),
+                    None => { reassign = true }
+                }
+            },
+            None => { reassign = true }
+        }
+
+        if reassign {
+            if self.stack.is_empty() {
+                None
+            } else {
+                self.node_iter = self.stack.pop_back();
+                self.next()
+            }
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -213,6 +286,10 @@ impl LastNode {
             node._set_heap_bit(256u16 + 255);
         }
         node
+    }
+
+    fn get_heap_ref<'a>(&'a self) -> &'a [u64; 8] {
+        &self.heap
     }
 
     fn _has_subnet(&self, subnet: u16) -> bool {
@@ -293,6 +370,42 @@ impl OctetNode for LastNode {
         let inner_prefix: u32 = prefix | ((self.octet as u32) << (32 - (prefix_length + 8)));
         make_cidr(inner_prefix, prefix_length + 8, &self.heap)
     }
+
+    fn walk<'a>(&'a self, prefix: u32, mask: u8) -> Box<Iterator<Item=(u32, u8)> + 'a> {
+        let cur_prefix: u32 = prefix | (self.octet as u32) << (32 - mask);
+        Box::new(LastNodeIterator {
+            heap: self.get_heap_ref(),
+            idx: 0,
+            prefix: cur_prefix,
+            mask,
+        })
+    }
+}
+
+struct LastNodeIterator<'a> {
+    heap: &'a [u64; 8],
+    idx: u16,
+    prefix: u32,
+    mask: u8,
+}
+
+impl <'a>Iterator for LastNodeIterator<'a> {
+    type Item = (u32, u8);
+
+    fn next(&mut self) -> Option<(u32, u8)> {
+        let mut match_ = false;
+        while ! match_ && self.idx < 511 {
+            self.idx += 1;
+            let (idx, flag) = to_position(self.idx).unwrap();
+            match_ = is_flag_set(self.heap[idx], flag);
+        }
+        if match_ {
+            let (octet, p_mask) = _calculate_partial_cidr(self.idx);
+            let ip_address = self.prefix | (octet as u32) << (24 - self.mask);
+            return Some((ip_address, self.mask + p_mask));
+        }
+        None
+    }
 }
 
 fn to_position(octet: u16) -> Result<(usize, u64), &'static str> {
@@ -332,15 +445,14 @@ impl IPTree {
         self.octets = HashMap::new(); // just curious if this will be enough
     }
 
+    // TODO create iterator instead of Vec<String>
     pub fn list_cidr(&self) -> Vec<String> {
         self.recursive_list(0, 0).iter().map(|&(ip, mask)| {
             format!("{}.{}.{}.{}/{}", ip >> 24, (ip >> 16) & 0xff, (ip >> 8) & 0xff, ip & 0xff, mask)
         }).collect()
     }
-}
 
-impl OctetNode for IPTree {
-    fn add(&mut self, octet: &[u8]) -> () {
+    pub fn add(&mut self, octet: &[u8]) -> () {
         if octet.len() != 4 {
             return;
         }
@@ -369,6 +481,49 @@ impl OctetNode for IPTree {
 
         cidrs
     }
+
+    fn walk<'a>(&'a self) -> Box<Iterator<Item=(u32, u8)> + 'a> {
+        let mut iter_stack: LinkedList< Box< Iterator<Item=(u32, u8)> + 'a>> = LinkedList::new();
+        for node in self.octets.values() {
+            iter_stack.push_back(node.walk(0, 0));
+        }
+        Box::new(TreeIter {
+            iter_stack,
+            cursor: None
+        })
+    }
+}
+
+struct TreeIter<'a> {
+    iter_stack: LinkedList<Box<Iterator<Item=(u32, u8)> + 'a>>,
+    cursor: Option<Box<Iterator<Item=(u32, u8)> + 'a>>
+}
+
+impl <'a>Iterator for TreeIter<'a> {
+    type Item = (u32, u8);
+
+    fn next(&mut self) -> Option<(u32, u8)> {
+        let mut reassign = false;
+        match self.cursor {
+            Some(ref mut iter) => {
+                match iter.next() {
+                    Some((ip, prefix)) => return Some((ip, prefix)),
+                    None => reassign = true
+                }
+            }
+            None => reassign = true
+        }
+        if reassign {
+            if self.iter_stack.is_empty() {
+                None
+            } else {
+                self.cursor = self.iter_stack.pop_back();
+                self.next()
+            }
+        } else {
+            None
+        }
+    }
 }
 
 fn floor_log2(number: u64) -> Result<u8, &'static str> {
@@ -381,6 +536,10 @@ fn floor_log2(number: u64) -> Result<u8, &'static str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn make_prefix(ip: [u8; 4]) -> u32 {
+        ((ip[0] as u32) << 24) | ((ip[1] as u32) << 16) | ((ip[2] as u32) << 8) | ip[3] as u32
+    }
 
     #[test]
     fn test_neighbor() {
@@ -479,6 +638,40 @@ mod tests {
         assert!(!node.is_subnet());
         node.expand(255);
         assert!(node.is_subnet());
+    }
+
+    #[test]
+    fn test_last_node_walk_empty() {
+        let node = LastNode {
+            octet: 0,
+            heap: [0, 0, 0, 0, 0, 0, 0, 0],
+        };
+        let mut iter = node.walk(0, 24);
+        assert_eq!(None, iter.next())
+    }
+
+    #[test]
+    fn test_last_node_walk_single_element() {
+        let node = LastNode {
+            octet: 0,
+            heap: [0, 0, 0, 0, 2, 0, 0, 0],
+        };
+        let mut iter = node.walk(0, 24);
+        assert_eq!(Some((1, 32)), iter.next());
+        assert_eq!(None, iter.next())
+    }
+
+    #[test]
+    fn test_last_node_walk_multiple() {
+        let node = LastNode {
+            octet: 1,
+            heap: [0, 0, 0, 0, 2 | 8 | 32, 0, 0, 0]
+        };
+        let mut iter = node.walk(make_prefix([192, 168, 0, 0]), 24);
+        assert_eq!(Some((make_prefix([192, 168, 1, 1]), 32)), iter.next());
+        assert_eq!(Some((make_prefix([192, 168, 1, 3]), 32)), iter.next());
+        assert_eq!(Some((make_prefix([192, 168, 1, 5]), 32)), iter.next());
+        assert_eq!(None, iter.next())
     }
 
     #[test]

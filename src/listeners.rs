@@ -115,42 +115,42 @@ pub mod udp {
         }
     }
 
-    #[cfg(test)]
-    mod tests {
-        use parsers::simple_parser;
-        use super::*;
-
-        #[test]
-        fn test_UdpServer_listener() {
-            use std::thread;
-            use std::sync::mpsc::channel;
-
-            let (tx, rx) = channel();
-
-            let mut handles = Vec::new();
-
-            handles.push(thread::spawn(move || {
-                let mut serv = UdpServer::new("127.0.0.1:12345", simple_parser, tx).unwrap();
-                serv.listen();
-            }));
-
-            thread::sleep_ms(3000);
-
-            handles.push(thread::spawn(move || {
-                let mut socket = UdpSocket::bind("127.0.0.1:12341").unwrap();
-                let addresses = b"192.168.1.1 127.0.0.1 172.16.100.10";
-                socket.send_to(addresses, "127.0.0.1:12345").unwrap();
-                thread::sleep_ms(2000);
-                socket.send_to(b"STOP!", "127.0.0.1:12345");
-                drop(socket);
-            }));
-
-            let data: Vec<[u8; 4]> = rx.recv().unwrap();
-
-            for handle in handles {
-                handle.join().unwrap();
-            }
-            assert_eq!(vec![[192, 168, 1, 1], [127, 0, 0, 1], [172, 16, 100, 10]], data);
-        }
-    }
+//    #[cfg(test)]
+//    mod tests {
+//        use parsers::simple_parser;
+//        use super::*;
+//
+//        #[test]
+//        fn test_UdpServer_listener() {
+//            use std::thread;
+//            use std::sync::mpsc::channel;
+//
+//            let (tx, rx) = channel();
+//
+//            let mut handles = Vec::new();
+//
+//            handles.push(thread::spawn(move || {
+//                let mut serv = UdpServer::new("127.0.0.1:12345", simple_parser, tx).unwrap();
+//                serv.listen();
+//            }));
+//
+//            thread::sleep_ms(3000);
+//
+//            handles.push(thread::spawn(move || {
+//                let mut socket = UdpSocket::bind("127.0.0.1:12341").unwrap();
+//                let addresses = b"192.168.1.1 127.0.0.1 172.16.100.10";
+//                socket.send_to(addresses, "127.0.0.1:12345").unwrap();
+//                thread::sleep_ms(2000);
+//                socket.send_to(b"STOP!", "127.0.0.1:12345");
+//                drop(socket);
+//            }));
+//
+//            let data: Vec<[u8; 4]> = rx.recv().unwrap();
+//
+//            for handle in handles {
+//                handle.join().unwrap();
+//            }
+//            assert_eq!(vec![[192, 168, 1, 1], [127, 0, 0, 1], [172, 16, 100, 10]], data);
+//        }
+//    }
 }
