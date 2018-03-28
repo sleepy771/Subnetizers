@@ -54,7 +54,7 @@ mod tests {
     }
 
     #[test]
-    fn test_word_separator() {
+    fn test_nom_ip_parser() {
         let ips = b" 127.0.0.1  192.168.1.1 ";
         assert_eq!(IResult::Done(&b""[..], vec![[127, 0, 0, 1], [192, 168, 1, 1]]), nom_parse_ip(&ips[..]));
     }

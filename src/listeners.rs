@@ -132,7 +132,7 @@ pub mod udp {
             let mut handles = Vec::new();
 
             handles.push(thread::spawn(move || {
-                let mut serv = UdpServer::new("127.0.0.1:12345", simple_parser, tx::send).unwrap();
+                let mut serv = UdpServer::new("127.0.0.1:12345", simple_parser, tx).unwrap();
                 lock_tx.send("".to_owned()).unwrap();
                 serv.listen();
             }));
@@ -147,7 +147,10 @@ pub mod udp {
                 drop(socket);
             }));
 
-            let data: Vec<[u8; 4]> = rx.recv().unwrap();
+            let data: Vec<[u8; 4]> = match rx.recv().unwrap() {
+                AggEvent::ADD(data) => data,
+                _ => panic!("This shouldn't happened!")
+            };
 
             for handle in handles {
                 handle.join().unwrap();
