@@ -1,7 +1,8 @@
 use parsers::StreamParser;
 use std::sync::mpsc::Sender;
+use ipagg::AggEvent;
 
-pub type IpSender = Sender<Vec<[u8; 4]>>;
+pub type IpSender = Sender<AggEvent>;
 
 pub trait Listener {
     fn listen(&mut self);
@@ -29,7 +30,7 @@ pub fn listener_factory(creds: ListenerCredentials, parser: StreamParser, sender
 pub mod kafka {
     use kafka::consumer::{Consumer, FetchOffset, GroupOffsetStorage};
     use std::sync::mpsc::Sender;
-    use super::{IpSender, Listener, StreamParser};
+    use super::{IpSender, Listener, StreamParser, AggEvent};
 
     pub struct KafkaListener {
         consumer: Consumer,
@@ -60,7 +61,7 @@ pub mod kafka {
             for ms in self.consumer.poll().unwrap().iter() {
                 for m in ms.messages() {
                     let messages: Vec<[u8; 4]> = (self.value_parser)(m.value).unwrap();
-                    self.sender.send(messages).unwrap();
+                    self.sender.send(AggEvent::ADD(messages)).unwrap();
                 }
             }
         }
@@ -70,7 +71,7 @@ pub mod kafka {
 pub mod udp {
     use std::net::UdpSocket;
     use std::sync::mpsc::Sender;
-    use super::{IpSender, Listener, StreamParser};
+    use super::{IpSender, Listener, StreamParser, AggEvent};
 
     pub struct UdpServer {
         socket: UdpSocket,
@@ -80,7 +81,7 @@ pub mod udp {
 
 
     impl UdpServer {
-        pub fn new(address: &str, parser: StreamParser, sender: Sender<Vec<[u8; 4]>>) -> Result<UdpServer, String> {
+        pub fn new(address: &str, parser: StreamParser, sender: IpSender) -> Result<UdpServer, String> {
             match UdpSocket::bind(address) {
                 Ok(socket) => {
                     Ok(UdpServer { socket, sender, parser })
@@ -105,7 +106,7 @@ pub mod udp {
                             break;
                         }
                         let data = (self.parser)(&buffer[0..size]).unwrap();
-                        self.sender.send(data).unwrap();
+                        self.sender.send(AggEvent::ADD(data)).unwrap();
                     }
                     Err(err) => {
                         panic!("UdpServer stoped working due to: {}", err);
@@ -131,7 +132,7 @@ pub mod udp {
             let mut handles = Vec::new();
 
             handles.push(thread::spawn(move || {
-                let mut serv = UdpServer::new("127.0.0.1:12345", simple_parser, tx).unwrap();
+                let mut serv = UdpServer::new("127.0.0.1:12345", simple_parser, tx::send).unwrap();
                 lock_tx.send("".to_owned()).unwrap();
                 serv.listen();
             }));
