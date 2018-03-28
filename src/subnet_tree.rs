@@ -1,6 +1,7 @@
 use SETTINGS;
 use std::collections::{HashMap, LinkedList};
 use std::iter::{Iterator, IntoIterator};
+use std::ops::BitXor;
 
 
 pub trait OctetNode: Send {
@@ -11,8 +12,6 @@ pub trait OctetNode: Send {
     fn get_node(&mut self, octet: &u8) -> Option<&mut Box<OctetNode>>;
 
     fn is_subnet(&self) -> bool;
-
-    fn recursive_list(&self, prefix: u32, prefix_length: u8) -> Vec<(u32, u8)>;
 
     fn walk<'a>(&'a self, prefix: u32, mask: u8) -> Box<Iterator<Item=(u32, u8)> + 'a>;
 }
@@ -25,6 +24,7 @@ pub struct StandardNode {
 }
 
 // TODO create better names
+// > @pastMe: Nah I'm too lazy
 impl StandardNode {
     pub fn new(octet: u8, level: u8) -> StandardNode {
         StandardNode {
@@ -39,23 +39,24 @@ impl StandardNode {
         &self.heap
     }
 
-    fn _has_subnet(&self, subnet: u16) -> bool {
+    fn contains_subnet_in_heap(&self, subnet: u16) -> bool {
         let (idx, bit) = to_position(subnet).unwrap();
         is_flag_set(self.heap[idx], bit)
     }
 
-    fn _set_heap_bit(&mut self, subnet: u16) {
+    fn set_heap_bit(&mut self, subnet: u16) {
         let (idx, bit) = to_position(subnet).unwrap();
         self.heap[idx] |= bit;
     }
 
-    fn _unset_heap_bit(&mut self, subnet: u16) {
+    fn unset_heap_bit(&mut self, subnet: u16) {
+        // or should I just call this upset_heap_bit?
         let (idx, bit) = to_position(subnet).unwrap();
         let inv_bit = !bit;
         self.heap[idx] &= inv_bit;
     }
 
-    fn _has_empty_heap(&self) -> bool {
+    fn is_heap_empty(&self) -> bool {
         let mut heap = 0u64;
         for i in 0..8 {
             heap |= self.heap[i];
@@ -63,14 +64,14 @@ impl StandardNode {
         heap == 0u64
     }
 
-    fn _subnetize(&mut self, subnet: u16) {
+    fn merge_subnets(&mut self, subnet: u16) {
         let mut current_subnet = subnet;
         loop {
             let parent = current_subnet >> 1;
-            if self._has_subnet(current_subnet) && self._has_subnet(neighbor(current_subnet)) {
-                self._set_heap_bit(parent);
-                self._unset_heap_bit(current_subnet);
-                self._unset_heap_bit(neighbor(current_subnet));
+            if self.contains_subnet_in_heap(current_subnet) && self.contains_subnet_in_heap(neighbor(current_subnet)) {
+                self.set_heap_bit(parent);
+                self.unset_heap_bit(current_subnet);
+                self.unset_heap_bit(neighbor(current_subnet));
             } else {
                 break;
             }
@@ -81,7 +82,7 @@ impl StandardNode {
         }
     }
 
-    fn _is_subnet(&self, octet: u8) -> bool {
+    fn is_part_of_aggregated_subnet(&self, octet: u8) -> bool {
         let mut pos = octet.clone() as u16 + 256u16;
         loop {
             let (idx, bit) = to_position(pos).unwrap();
@@ -99,7 +100,7 @@ impl StandardNode {
     }
 
     fn expand(&mut self, octet: u8) -> () {
-        if self._is_subnet(octet) {
+        if self.is_part_of_aggregated_subnet(octet) {
             return;
         }
         match self.subnodes.get(&octet) {
@@ -131,23 +132,23 @@ impl OctetNode for StandardNode {
         if octet.len() == 0 {
             return;
         }
-        if self._is_subnet(octet[0]) {
+        if self.is_part_of_aggregated_subnet(octet[0]) {
             return;
         }
         self.expand(octet[0]);
         self.subnodes.get_mut(&octet[0]).unwrap().add(&octet[1..]);
 
         if self.subnodes.get(&octet[0]).unwrap().is_subnet() {
-            self._set_heap_bit(octet[0] as u16 + 256u16);
-            if self._is_subnet(octet[0]) && self._is_subnet(neighbor(octet[0] as u16) as u8) {
-                self._subnetize(octet[0] as u16 + 256u16);
+            self.set_heap_bit(octet[0] as u16 + 256u16);
+            if self.is_part_of_aggregated_subnet(octet[0]) && self.is_part_of_aggregated_subnet(neighbor(octet[0])) {
+                self.merge_subnets(octet[0] as u16 + 256u16);
             }
             self.subnodes.remove(&octet[0]);
         }
     }
 
     fn contains(&self, octet: &u8) -> bool {
-        if self._is_subnet(octet.clone()) {
+        if self.is_part_of_aggregated_subnet(octet.clone()) {
             return true;
         }
         self.subnodes.contains_key(octet)
@@ -159,20 +160,6 @@ impl OctetNode for StandardNode {
 
     fn is_subnet(&self) -> bool {
         self.heap[0] == 2
-    }
-
-    fn recursive_list(&self, prefix: u32, prefix_length: u8) -> Vec<(u32, u8)> {
-        let mut prefix_vector: Vec<(u32, u8)> = Vec::new();
-        let inner_prefix = prefix | ((self.octet as u32) << (32 - (prefix_length + 8)));
-        for node in self.subnodes.values() {
-            prefix_vector.append(&mut node.recursive_list(inner_prefix, prefix_length + 8));
-        }
-
-        if !self._has_empty_heap() {
-            prefix_vector.append(&mut make_cidr(inner_prefix, prefix_length + 8, &self.heap));
-        }
-
-        prefix_vector
     }
 
     fn walk<'a>(&'a self, prefix: u32, mask: u8) -> Box<Iterator<Item=(u32, u8)> + 'a> {
@@ -193,24 +180,11 @@ impl OctetNode for StandardNode {
     }
 }
 
-fn make_cidr(prefix: u32, prefix_length: u8, heap: &[u64; 8]) -> Vec<(u32, u8)> {
-    let mut ips: Vec<(u32, u8)> = Vec::new();
-    for i in 1..511 {
-        let (idx, bit) = to_position(i).unwrap();
-        if is_flag_set(heap[idx], bit) {
-            let (octet, p_mask) = _calculate_partial_cidr(i);
-            let ip_address = prefix | (octet as u32) << (24 - prefix_length);
-            ips.push((ip_address, prefix_length + p_mask));
-        }
-    }
-    ips
-}
-
-fn _calculate_partial_cidr(cidr_bit: u16) -> (u8, u8) {
-    let partial_mask: u8 = floor_log2(cidr_bit as u64).unwrap();
+fn calculate_partial_cidr(heap_bit: u16) -> (u8, u8) {
+    let partial_mask: u8 = floor_log2(heap_bit as u64).unwrap();
     let mask_bit_complement = 1 << partial_mask;
     let cidr_padding = 256 >> partial_mask;
-    let range_idx = cidr_bit & (mask_bit_complement - 1);
+    let range_idx = heap_bit & (mask_bit_complement - 1);
     ((cidr_padding * range_idx) as u8, partial_mask)
 }
 
@@ -234,7 +208,7 @@ impl <'a>Iterator for MoonWalker<'a> {
             match_ = is_flag_set(self.heap[idx], flag);
         }
         if match_ {
-            let (octet, p_mask) = _calculate_partial_cidr(self.idx);
+            let (octet, p_mask) = calculate_partial_cidr(self.idx);
             let ip_address = self.prefix | (octet as u32) << (24 - self.mask);
             return Some((ip_address, self.mask + p_mask));
         }
@@ -280,10 +254,10 @@ impl LastNode {
     pub fn new_with_opts(octet: u8, zeroed: bool, broadcast: bool) -> LastNode {
         let mut node = Self::new(octet);
         if zeroed {
-            node._set_heap_bit(256u16 + 0);
+            node.set_heap_bit(256u16 + 0);
         }
         if broadcast {
-            node._set_heap_bit(256u16 + 255);
+            node.set_heap_bit(256u16 + 255);
         }
         node
     }
@@ -292,30 +266,30 @@ impl LastNode {
         &self.heap
     }
 
-    fn _has_subnet(&self, subnet: u16) -> bool {
+    fn contains_subnet_in_heap(&self, subnet: u16) -> bool {
         let (idx, bit) = to_position(subnet).unwrap();
         is_flag_set(self.heap[idx], bit)
     }
 
-    fn _set_heap_bit(&mut self, subnet: u16) {
+    fn set_heap_bit(&mut self, subnet: u16) {
         let (idx, bit) = to_position(subnet).unwrap();
         self.heap[idx] |= bit;
     }
 
-    fn _unset_heap_bit(&mut self, subnet: u16) {
+    fn unset_heap_bit(&mut self, subnet: u16) {
         let (idx, bit) = to_position(subnet).unwrap();
         let inv_bit = !bit;
         self.heap[idx] &= inv_bit;
     }
 
-    fn _subnetize(&mut self, subnet: u16) {
+    fn subnetize(&mut self, subnet: u16) {
         let mut current_subnet = subnet;
         loop {
             let parent = current_subnet >> 1;
-            if self._has_subnet(current_subnet) && self._has_subnet(neighbor(current_subnet)) {
-                self._set_heap_bit(parent);
-                self._unset_heap_bit(current_subnet);
-                self._unset_heap_bit(neighbor(current_subnet));
+            if self.contains_subnet_in_heap(current_subnet) && self.contains_subnet_in_heap(neighbor(current_subnet)) {
+                self.set_heap_bit(parent);
+                self.unset_heap_bit(current_subnet);
+                self.unset_heap_bit(neighbor(current_subnet));
             } else {
                 break;
             }
@@ -332,7 +306,7 @@ impl LastNode {
         }
         let (idx, bit) = to_position(octet as u16 + 256u16).unwrap();
         self.heap[idx] |= bit;
-        self._subnetize(octet as u16 + 256u16);
+        self.subnetize(octet as u16 + 256u16);
     }
 }
 
@@ -366,11 +340,6 @@ impl OctetNode for LastNode {
         2 == self.heap[0]
     }
 
-    fn recursive_list(&self, prefix: u32, prefix_length: u8) -> Vec<(u32, u8)> {
-        let inner_prefix: u32 = prefix | ((self.octet as u32) << (32 - (prefix_length + 8)));
-        make_cidr(inner_prefix, prefix_length + 8, &self.heap)
-    }
-
     fn walk<'a>(&'a self, prefix: u32, mask: u8) -> Box<Iterator<Item=(u32, u8)> + 'a> {
         let cur_prefix: u32 = prefix | (self.octet as u32) << (24 - mask);
         let cur_mask: u8 = mask + 8;
@@ -394,14 +363,14 @@ impl <'a>Iterator for LastNodeIterator<'a> {
     type Item = (u32, u8);
 
     fn next(&mut self) -> Option<(u32, u8)> {
-        let mut match_ = false;
-        while ! match_ && self.idx < 511 {
+        let mut match_found = false;
+        while ! match_found && self.idx < 511 {
             self.idx += 1;
             let (idx, flag) = to_position(self.idx).unwrap();
-            match_ = is_flag_set(self.heap[idx], flag);
+            match_found = is_flag_set(self.heap[idx], flag);
         }
-        if match_ {
-            let (octet, p_mask) = _calculate_partial_cidr(self.idx);
+        if match_found {
+            let (octet, p_mask) = calculate_partial_cidr(self.idx);
             let ip_address = self.prefix | (octet as u32) << (24 - self.mask);
             return Some((ip_address, self.mask + p_mask));
         }
@@ -413,6 +382,7 @@ fn to_position(octet: u16) -> Result<(usize, u64), &'static str> {
     if octet > 511 {
         return Err("Subnetized octet can not have value > 512!");
     }
+    // because heap is split to eight 64bit arrays
     Ok(((octet / 64) as usize, (1u64 << (octet % 64)) as u64))
 }
 
@@ -420,8 +390,20 @@ fn is_flag_set(bits: u64, flag: u64) -> bool {
     bits & flag == flag
 }
 
-fn neighbor(subnet: u16) -> u16 {
-    subnet ^ 1
+fn neighbor<T: Neighboring>(subnet: T) -> T {
+    subnet ^ T::one()
+}
+
+trait Neighboring: BitXor<Output=Self> + Copy {
+    fn one() -> Self;
+}
+
+impl Neighboring for u8 {
+    fn one() -> u8 { 1 }
+}
+
+impl Neighboring for u16 {
+    fn one() -> u16 { 1 }
 }
 
 pub struct IPTree {
@@ -523,10 +505,10 @@ mod tests {
 
     #[test]
     fn test_neighbor() {
-        assert_eq!(neighbor(1), 0);
-        assert_eq!(neighbor(255), 254);
-        assert_eq!(neighbor(256 + 255), 256 + 254);
-        assert_eq!(neighbor(256 + 0), 256 + 1);
+        assert_eq!(neighbor::<u16>(1), 0);
+        assert_eq!(neighbor::<u16>(255), 254);
+        assert_eq!(neighbor::<u16>(256 + 255), 256 + 254);
+        assert_eq!(neighbor::<u16>(256 + 0), 256 + 1);
     }
 
     #[test]
@@ -558,7 +540,7 @@ mod tests {
             octet: 0,
             heap: [0, 0, 0, 0, 3, 0, 0, 0],
         };
-        node._subnetize(256 + 1);
+        node.subnetize(256 + 1);
         assert_eq!(node.heap, [0, 0, 1, 0, 0, 0, 0, 0]);
     }
 
@@ -568,7 +550,7 @@ mod tests {
             octet: 0,
             heap: [1, 0, 0, 0, 0, 0, 0, 0],
         };
-        node._unset_heap_bit(0);
+        node.unset_heap_bit(0);
         assert_eq!(node.heap, [0; 8]);
     }
 
@@ -578,7 +560,7 @@ mod tests {
             octet: 0,
             heap: [0, 0, 0, 0, 0, 0, 0, 0],
         };
-        node._set_heap_bit(0);
+        node.set_heap_bit(0);
         assert_eq!(node.heap, [1, 0, 0, 0, 0, 0, 0, 0]);
     }
 
@@ -588,7 +570,7 @@ mod tests {
             octet: 0,
             heap: [0, 0, 0, 0, 1, 0, 0, 0],
         };
-        assert!(node._has_subnet(256 + 0));
+        assert!(node.contains_subnet_in_heap(256 + 0));
     }
 
     #[test]
@@ -662,8 +644,8 @@ mod tests {
             subnodes: HashMap::new(),
             octet: 0,
         };
-        assert!(node._has_subnet(1));
-        assert!(!node._has_subnet(2));
+        assert!(node.contains_subnet_in_heap(1));
+        assert!(!node.contains_subnet_in_heap(2));
     }
 
     #[test]
@@ -674,7 +656,7 @@ mod tests {
             subnodes: HashMap::new(),
             level: 0,
         };
-        node._unset_heap_bit(0);
+        node.unset_heap_bit(0);
         assert_eq!(node.heap, [0; 8]);
     }
 
@@ -686,7 +668,7 @@ mod tests {
             subnodes: HashMap::new(),
             level: 0,
         };
-        node._set_heap_bit(0);
+        node.set_heap_bit(0);
         assert_eq!(node.heap, [1, 0, 0, 0, 0, 0, 0, 0]);
     }
 
@@ -698,7 +680,7 @@ mod tests {
             subnodes: HashMap::new(),
             level: 0,
         };
-        node._subnetize(256 + 1);
+        node.merge_subnets(256 + 1);
         assert_eq!(node.heap, [0, 0, 1, 0, 0, 0, 0, 0]);
     }
 
@@ -711,8 +693,8 @@ mod tests {
             subnodes: HashMap::new(),
             level: 0,
         };
-        assert!(node._is_subnet(0));
-        assert!(!node._is_subnet(1));
+        assert!(node.is_part_of_aggregated_subnet(0));
+        assert!(!node.is_part_of_aggregated_subnet(1));
 
         // Node does not have subnet bit setup, but child already is subnet
         let mut node = StandardNode {
@@ -725,7 +707,7 @@ mod tests {
             heap: [2, 0, 0, 0, 0, 0, 0, 0],
             octet: 0,
         }));
-        assert!(node._is_subnet(0));
+        assert!(node.is_part_of_aggregated_subnet(0));
 
         // Node has subnet bit setup, and child is still there with invalid data.
         let mut node = StandardNode {
@@ -738,7 +720,7 @@ mod tests {
             heap: [0, 0, 0, 0, 0, 0, 0, 0],
             octet: 0,
         }));
-        assert!(node._is_subnet(0));
+        assert!(node.is_part_of_aggregated_subnet(0));
 
         // Node does not have subnet bit set and child is not a subnet.
         let mut node = StandardNode {
@@ -751,7 +733,7 @@ mod tests {
             heap: [0, 0, 0, 0, 1, 0, 0, 0],
             octet: 0,
         }));
-        assert!(!node._is_subnet(0));
+        assert!(!node.is_part_of_aggregated_subnet(0));
 
         // Entire node is subnet, so children have to be also
         let mut node = StandardNode {
@@ -760,7 +742,7 @@ mod tests {
             subnodes: HashMap::new(),
             level: 0,
         };
-        assert!(node._is_subnet(23));
+        assert!(node.is_part_of_aggregated_subnet(23));
     }
 
     #[test]
@@ -951,29 +933,16 @@ mod tests {
 
     #[test]
     fn test_calculate_subnet() {
-        assert_eq!(_calculate_partial_cidr(1), (0, 0));
-        assert_eq!(_calculate_partial_cidr(511), (255, 8));
-        assert_eq!(_calculate_partial_cidr(256), (0, 8));
+        assert_eq!(calculate_partial_cidr(1), (0, 0));
+        assert_eq!(calculate_partial_cidr(511), (255, 8));
+        assert_eq!(calculate_partial_cidr(256), (0, 8));
     }
 
     #[test]
     fn test__calculate_partial_cidr() {
-        assert_eq!((0u8, 0u8), _calculate_partial_cidr(1u16));
-        assert_eq!((0u8, 1u8), _calculate_partial_cidr(2u16));
-        assert_eq!((0u8, 8u8), _calculate_partial_cidr(256u16));
-        assert_eq!((255u8, 8u8), _calculate_partial_cidr(511u16));
-    }
-
-    #[test]
-    fn test_make_cidr() {
-        let prefix: u32 = 192 << 24 | 168 << 16 | 1 << 8;
-        let mask: u8 = 24;
-        assert_eq!(vec![(prefix, 24)], make_cidr(prefix, mask, &[2, 0, 0, 0, 0, 0, 0, 0]));
-        assert_eq!(vec![(prefix, 32)], make_cidr(prefix, mask, &[0, 0, 0, 0, 1, 0, 0, 0]));
-        assert_eq!(vec![(prefix | 64u32, 32)], make_cidr(prefix, mask, &[0, 0, 0, 0, 0, 1, 0, 0]));
-        assert_eq!(
-            vec![(prefix | 64, 32), (prefix | 66, 32)],
-            make_cidr(prefix, mask, &[0, 0, 0, 0, 0, 5, 0, 0])
-        );
+        assert_eq!((0u8, 0u8), calculate_partial_cidr(1u16));
+        assert_eq!((0u8, 1u8), calculate_partial_cidr(2u16));
+        assert_eq!((0u8, 8u8), calculate_partial_cidr(256u16));
+        assert_eq!((255u8, 8u8), calculate_partial_cidr(511u16));
     }
 }
