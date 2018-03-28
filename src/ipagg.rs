@@ -2,7 +2,7 @@ use formatters::{AggFormatter, simple_formatter};
 use listeners::{IpSender, Listener, listener_factory, ListenerCredentials};
 use listeners::kafka::KafkaListener;
 use listeners::udp::UdpServer;
-use parsers::{simple_parser, StreamParser};
+use parsers::{simple_parser, StreamParser, nom_ip_parser};
 use SETTINGS;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{channel, Receiver, Sender};
@@ -45,7 +45,7 @@ impl IpAggregator {
     fn _start_listener_thread(&mut self, sender: Sender<Vec<[u8; 4]>>) {
         let bind_addr: String = SETTINGS.get_udp_bind_address().unwrap().clone();
         self.handles.push(thread::spawn(move || {
-            let mut listener = listener_factory(ListenerCredentials::UdpServer(bind_addr), simple_parser, sender);
+            let mut listener = listener_factory(ListenerCredentials::UdpServer(bind_addr), nom_ip_parser, sender);
             listener.listen();
         }));
     }

@@ -5,6 +5,8 @@ extern crate lazy_static;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_yaml;
+#[macro_use]
+extern crate nom;
 
 mod subnet_tree;
 mod senders;
