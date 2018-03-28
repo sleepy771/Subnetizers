@@ -50,6 +50,50 @@ impl IpAggregator {
         }));
     }
 
+    fn start_tree_event_listener(&mut self, receiver: Receiver<AggEvent>, sender: Sender<Vec<(u32, u8)>>) {
+        self.handles.push(thread::spawn(move || {
+            let mut tree = IPTree::new();
+            loop {
+                match receiver.recv() {
+                    Ok(event) => {
+                        match event {
+                            AggEvent::ADD(data) => {
+                                data.into_iter().for_each(|octet| {tree.add(&octet)});
+                            },
+                            AggEvent::DUMP => {
+                                let mut ip_tree_iter = tree.walk();
+                                loop {
+                                    let ipvec: Vec<(u32, u8)> = (&mut ip_tree_iter).take(1000).collect();
+                                    let vec_len = ipvec.len();
+                                    sender.send(ipvec).unwrap();
+                                    if vec_len < 1000 {
+                                        break;
+                                    }
+                                }
+                            },
+                            AggEvent::TERMINATE => {
+                                drop(sender);
+                                break;
+                            }
+                        }
+                    },
+                    Err(e) => panic!("IPTree thread paniced: {}", e)
+                }
+            }
+        }));
+    }
+
+    fn start_dump_timer(&mut self, sender: Sender<AggEvent>) {
+        let sleep_dur = Duration::from_secs(SETTINGS.get_publish_timer() as u64);
+        self.handles.push(thread::spawn(move || {
+            loop {
+                thread::sleep(sleep_dur);
+                sender.send(AggEvent::DUMP).unwrap();
+            }
+        }));
+    }
+
+    // TODO remove
     fn _start_tree_updater_thread(&mut self, receiver: Receiver<Vec<[u8; 4]>>) {
         let tree_ref_mutex = Arc::clone(&self.tree);
         self.handles.push(thread::spawn(move || {
@@ -65,6 +109,7 @@ impl IpAggregator {
         }));
     }
 
+    // TODO remove
     fn _start_tree_lister_thread(&mut self, sender: Sender<Vec<(u32, u8)>>) {
         let tree_ref_mutex = Arc::clone(&self.tree);
         let stoper_mutex = Arc::clone(&self.show_stopper);
@@ -107,4 +152,10 @@ impl IpAggregator {
         let mut stop = stop_mutex.lock().unwrap();
         *stop = true;
     }
+}
+
+pub enum AggEvent {
+    ADD(Vec<[u8;4]>),
+    DUMP,
+    TERMINATE,
 }
