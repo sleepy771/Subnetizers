@@ -99,7 +99,7 @@ mod tests {
     }
 
     #[test]
-    fn test_UdpSender_run_sender() {
+    fn test_udp_sender_run_sender() {
         use std::thread;
         use std::sync::mpsc::channel;
         use std::string::ToString;
