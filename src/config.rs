@@ -41,7 +41,7 @@ pub struct KafkaSender {
 pub struct Settings {
     receiver: Receivers,
     sender: Senders,
-    #[serde(default = "thrity_seconds")]
+    #[serde(default = "thirty_seconds")]
     publish_timer: u32,
 
     #[serde(default = "default_add_broadcast")]
@@ -63,7 +63,7 @@ impl Settings {
                 udp_address: default_udp_sender(),
                 kafka: None
             },
-            publish_timer: thrity_seconds(),
+            publish_timer: thirty_seconds(),
             auto_add_zeroed: default_add_zeroed(),
             auto_add_broadcast: default_add_broadcast(),
         }
@@ -137,7 +137,7 @@ fn default_udp_sender() -> Option<String> {
     Some("127.0.0.1:6789".to_string())
 }
 
-fn thrity_seconds() -> u32 {
+fn thirty_seconds() -> u32 {
     30
 }
 

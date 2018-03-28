@@ -1,17 +1,18 @@
 pub type AggFormatter = fn(Vec<(u32, u8)>) -> Vec<String>;
+const MAX_UDP_DATAGRAM_PAYLOAD_SIZE: usize = 508;
 
 pub fn simple_formatter(cidrs: Vec<(u32, u8)>) -> Vec<String> {
     let mut from: usize = 0;
     let mut concated_msg: Vec<String> = Vec::new();
     while from < cidrs.len() - 1 {
-        let (msg, idx) = _concat_to_size(&cidrs[from..], 508);
+        let (msg, idx) = concat_to_size(&cidrs[from..], MAX_UDP_DATAGRAM_PAYLOAD_SIZE);
         from += idx;
         concated_msg.push(msg);
     }
     concated_msg
 }
 
-fn _concat_to_size(strings: &[(u32, u8)], max_size: usize) -> (String, usize) {
+fn concat_to_size(strings: &[(u32, u8)], max_size: usize) -> (String, usize) {
     let mut tmp_size: usize = 0;
     let mut chunk_last_idx: usize = 0;
     let mut use_entire_slice = true;
@@ -44,12 +45,40 @@ fn make_cidr_ip_string(cidr: &(u32, u8)) -> String {
 mod tests {
     use super::*;
 
-//    #[test]
-//    fn test__concat_to_size() {
-//        let v = vec!["A".to_string(), "B".to_string(), "C".to_string(), "D".to_string()];
-//        assert_eq!(("A B".to_string(), 2), _concat_to_size(&v, 3));
-//        assert_eq!(("A B".to_string(), 2), _concat_to_size(&v, 4));
-//        assert_eq!(("A B C".to_string(), 3), _concat_to_size(&v, 5));
-//        assert_eq!(("A B C D".to_string(), 4), _concat_to_size(&v, 20));
-//    }
+    fn make_ip(a: u8, b: u8, c: u8, d: u8) -> u32 {
+        (a as u32) << 24 | (b as u32) << 16 | (c as u32) << 8 | d as u32
+    }
+
+    #[test]
+    fn test_concat_to_size() {
+        let addresses = vec![
+            (make_ip(192, 168, 1, 1), 32_u8),
+            (make_ip(172, 16, 100, 0), 24_u8),
+            (make_ip(10, 10, 0, 0), 16_u8),
+            (make_ip(20, 0, 0, 0), 8_u8)
+        ];
+        assert_eq!(("192.168.1.1/32".to_owned(), 1), concat_to_size(&addresses, 20));
+    }
+
+    #[test]
+    fn test_concat_to_size_with_exact_len() {
+        let addresses = vec![
+            (make_ip(192, 168, 1, 1), 32_u8),
+            (make_ip(172, 16, 100, 0), 24_u8),
+            (make_ip(10, 10, 0, 0), 16_u8),
+            (make_ip(20, 0, 0, 0), 8_u8)
+        ];
+        assert_eq!(("192.168.1.1/32 172.16.100.0/24".to_owned(), 2), concat_to_size(&addresses, 30));
+    }
+
+    #[test]
+    fn test_concat_to_size_too_short() {
+        let addresses = vec![
+            (make_ip(192, 168, 1, 1), 32_u8),
+            (make_ip(172, 16, 100, 0), 24_u8),
+            (make_ip(10, 10, 0, 0), 16_u8),
+            (make_ip(20, 0, 0, 0), 8_u8)
+        ];
+        assert_eq!(("".to_owned(), 0), concat_to_size(&addresses, 5));
+    }
 }
