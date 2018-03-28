@@ -10,7 +10,7 @@ use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
 use subnet_tree::{IPTree, OctetNode};
-use senders::UdpSender;
+use senders::{Publisher, create_publisher, PublisherCredentials};
 
 pub struct IpAggregator {
     handles: Vec<JoinHandle<()>>,
@@ -94,8 +94,9 @@ impl IpAggregator {
 
     fn start_push_result_thread(&mut self, receiver: Receiver<Vec<(u32, u8)>>) {
         let send_to = SETTINGS.get_udp_send_to().unwrap();
+        let creds = PublisherCredentials::Udp(send_to.to_owned());
         self.handles.push(thread::spawn(move || {
-            let sender = UdpSender::new(send_to.as_str(), simple_formatter, receiver);
+            let mut sender = create_publisher(creds, simple_formatter, receiver).unwrap();
             sender.run_sender();
         }));
     }

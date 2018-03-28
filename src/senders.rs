@@ -3,8 +3,35 @@ use std::net::Ipv4Addr;
 use std::net::UdpSocket;
 use std::str::FromStr;
 use std::sync::mpsc::Receiver;
+use std::time::Duration;
 
-trait Sender {
+pub enum PublisherCredentials {
+    Udp(String),
+    Kafka(Vec<String>, Duration, String),
+}
+
+
+pub fn create_publisher(credentials: PublisherCredentials,
+                        formatter: AggFormatter,
+                        receiver: Receiver<Vec<(u32, u8)>>)
+                        -> Result<Box<Publisher + 'static>, String> {
+    match credentials {
+        PublisherCredentials::Udp(host) => {
+            match UdpSender::new(host.as_ref(), formatter, receiver) {
+                Ok(sender) => Ok(Box::new(sender)),
+                Err(e) => Err(e)
+            }
+        }
+        PublisherCredentials::Kafka(hosts, ack_timeout, topic) => {
+            match kafka::KafkaProducer::new(hosts, ack_timeout, topic, formatter, receiver) {
+                Ok(publisher) => Ok(Box::new(publisher)),
+                Err(e) => Err(e)
+            }
+        }
+    }
+}
+
+pub trait Publisher {
     fn run_sender(&mut self);
 }
 
@@ -18,21 +45,18 @@ pub struct UdpSender {
 
 
 impl UdpSender {
-    pub fn new(send_to: &str, formatter: AggFormatter, receiver: Receiver<Vec<(u32, u8)>>) -> UdpSender {
+    pub fn new(send_to: &str, formatter: AggFormatter, receiver: Receiver<Vec<(u32, u8)>>) -> Result<UdpSender, String> {
         match UdpSocket::bind("127.0.0.1:43211") {
             Ok(socket) => {
-                UdpSender {
-                    socket,
-                    receiver,
-                    formatter,
-                    send_to: send_to.to_string(),
-                }
+                Ok(UdpSender { socket, receiver, formatter, send_to: send_to.to_string() })
             }
-            Err(reason) => panic!("Can not bind sender to address: {}", reason)
+            Err(reason) => Err(format!("Can not bind sender to address: {}", reason))
         }
     }
+}
 
-    pub fn run_sender(&self) {
+impl Publisher for UdpSender {
+    fn run_sender(&mut self) {
         loop {
             match self.receiver.recv() {
                 Ok(cidr_vec) => {
@@ -43,7 +67,7 @@ impl UdpSender {
                         self.socket.send_to(ip_string.as_bytes(), self.send_to.as_str()).unwrap();
                     }
                 }
-                Err(reason) => panic!("Receiver stopped working: {}", reason)
+                Err(reason) => panic!("UdpSender::run_sender panicked; Cause: {}", reason)
             }
         };
     }
@@ -52,7 +76,6 @@ impl UdpSender {
 pub mod kafka {
     use super::*;
     use kafka::producer::{Producer, Record, RequiredAcks};
-    use std::time::Duration;
 
     pub struct KafkaProducer {
         producer: Producer,
@@ -63,17 +86,17 @@ pub mod kafka {
 
     impl KafkaProducer {
         pub fn new(hosts: Vec<String>, ack_timeout: Duration, topic: String, formatter: AggFormatter, receiver: Receiver<Vec<(u32, u8)>>)
-            -> KafkaProducer {
-            KafkaProducer {
-                producer: Producer::from_hosts(hosts).with_ack_timeout(ack_timeout).with_required_acks(RequiredAcks::One).create().unwrap(),
-                formatter,
-                receiver,
-                topic,
+                   -> Result<KafkaProducer, String> {
+            match Producer::from_hosts(hosts).with_ack_timeout(ack_timeout).with_required_acks(RequiredAcks::One).create() {
+                Ok(producer) => {
+                    Ok(KafkaProducer { producer, formatter, receiver, topic })
+                }
+                Err(e) => Err(format!("Creation of new KafkaProducer failed; Reason: {}", e))
             }
         }
     }
 
-    impl Sender for KafkaProducer {
+    impl Publisher for KafkaProducer {
         fn run_sender(&mut self) {
             loop {
                 match self.receiver.recv() {
@@ -82,7 +105,7 @@ pub mod kafka {
                             self.producer.send(&Record::from_value(self.topic.as_ref(), ip_string.as_bytes())).unwrap();
                         }
                     }
-                    Err(e) => panic!("Something happend: {}", e)
+                    Err(e) => panic!("KafkaProducer::run_sender panicked; Cause: {}", e)
                 }
             }
         }
@@ -126,7 +149,7 @@ mod tests {
                     udp_listener_tx.send(str::from_utf8(&buffer[0..len]).unwrap().to_string()).unwrap();
                 }
 
-                Err(e) => panic!("Error occured during receive udp datagram: {}", e)
+                Err(e) => panic!("Error occurred during receive udp datagram: {}", e)
             }
         }));
 
@@ -136,7 +159,7 @@ mod tests {
         let (mut tx, mut rx) = channel();
 
         handles.push(thread::spawn(move || {
-            let sender = UdpSender::new("127.0.0.1:13345", simple_formatter, rx);
+            let mut sender = UdpSender::new("127.0.0.1:13345", simple_formatter, rx).unwrap();
             sender.run_sender();
         }));
 
