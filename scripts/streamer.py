@@ -10,7 +10,7 @@ UDP_PORT = 6788
 def ipv4_gen():
     rnd = random.Random()
     for _ in range(30):
-        yield '192.%d.%d.%d' % (rnd.randint(0,256), rnd.randint(0, 256), rnd.randint(1, 255))
+        yield '192.%d.%d.%d' % (rnd.randint(0,255), rnd.randint(0, 255), rnd.randint(1, 255))
 
 
 def make_dgram_msg():
