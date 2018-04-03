@@ -40,7 +40,7 @@ lazy_static! {
             match load_from_file(&PathBuf::from(path)) {
                 Ok(settings) => return settings.override_settings(overriding_settings),
                 Err(reason) => {
-                    warn!("Can not load file: {}", reason);
+                    warn!("Can not load file: {}; Skipping ...", reason);
                 }
             }
         }
@@ -48,10 +48,11 @@ lazy_static! {
             match load_from_default_location(&path) {
                 Ok(settings) => return settings.override_settings(overriding_settings),
                 Err(reason) => {
-                    info!("Can not load file: {}", reason);
+                    info!("Can not load file: {}; Skipping ...", reason);
                 }
             }
         }
+        info!("Using default settings...");
         Settings::default().override_settings(overriding_settings)
     };
 }
@@ -59,8 +60,11 @@ lazy_static! {
 fn main() {
     log4rs::init_config(default_log4rs_config()).unwrap();
     if let Some(log4rs_file_path) = SETTINGS.get_logger_config() {
+        info!("Initializing logger settings from file `{}`!", log4rs_file_path);
         log4rs::init_file(log4rs_file_path, Default::default()).unwrap();
     }
+    info!("Starting ipaggregator-rs");
     let mut aggregator = IpAggregator::new();
     aggregator.start();
+    info!("Stopping ipaggregator-rs");
 }
