@@ -13,7 +13,7 @@ Build
     > cargo build --release
 
 To run ip aggregator, just put it where you desire and run it. Process attempts to load settings (by default) from two
-locations: `/etc/ipaggregator/settings.yaml` or `~/.ipaggregator/settings.yaml`.
+locations: ``/etc/ipaggregator/settings.yaml`` or ``~/.ipaggregator/settings.yaml``.
 
 .. code-block:: bash
 
@@ -23,9 +23,11 @@ locations: `/etc/ipaggregator/settings.yaml` or `~/.ipaggregator/settings.yaml`.
     > cd $TO_WHEREEVER_I_WANT_IT
     > ./ipaggregator-rs
 
-ipaggregator-rs by default starts udp listener and udp publisher on `localhost:6788` and `localhost:6789` respectively.
-You can change this behavior in `settings.yaml` file or using command line arguments.
+ipaggregator-rs by default starts udp listener and udp publisher on ``localhost:6788`` and ``localhost:6789`` respectively.
+You can change this behavior in ``settings.yaml`` file or using command line arguments.
 Listener and publisher can also connect to kafka message broker, but this is untested at the time.
+
+.. warning:: Kafka listener and publisher are not tested yet.
 
 Explained configuration:
 ========================
@@ -34,7 +36,7 @@ Explained configuration:
 
     auto_use_zeroed: true  # Automatically add octet_1.octet_2.octet_3.0/32 IPv4 address
     auto_use_broadcast: true  # Automatically adds octet_1.octet_2.octet_3.255/32 IPv4 address
-    publish_timer: 30  # How often should be aggregated result streamed.
+    publish_timer: 30  # How often should be aggregated result streamed in seconds.
     receiver:  # listener settings
       receiver: udp  # listener type. Default is udp.
       udp_address: 127.0.0.1:8080  # Socket address where should be udp listener bound. (optional)
@@ -50,3 +52,32 @@ Explained configuration:
         topic: ips-out  # topic where ipaggregator-rs will send aggregated ip ranges
         ack_duration: 1  # Duration that will aggregator wait for ack.
     log4rs_settings: None  # Path to log4rs config file. (optional)
+
+
+How to test it:
+===============
+
+Assume we have udp listener for aggregated ip ranges @ ``localhost:6789``, ip address publisher @ ``localhost:6788``
+and ipaggregator-rs is built.
+Just run ipaggregator-rs and wait 30s. Or use receiver and streamer python3 scripts in ``./scripts``:
+
+In first terminal run:
+
+.. code-block:: sh
+
+    > cd /path/to/Subnetizers/project
+    > ./scripts/receiver.py
+
+In second:
+
+.. code-block:: sh
+
+    > cd /path/to/Subnetizers/project
+    > ./target/release/ipaggregator-rs
+
+In third:
+
+.. code-block:: sh
+
+    > cd /path/to/Subnetizers/project
+    > ./scripts/streamer.py
