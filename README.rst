@@ -1,9 +1,12 @@
-# IpAggregator-rs
+IpAggregator-rs
+###############
+
 IpAggregator is utility that, aggregates streamed ip addresses via udp or kafka to ip ranges written in CIDR format.
 
-## Build
+Build
+=====
 
-.. code-block:: sh
+.. code-block:: bash
     > git clone git@github.com:sleepy771/Subnetizers.git
     > cd Subnetizers
     > cargo build --release
@@ -11,7 +14,7 @@ IpAggregator is utility that, aggregates streamed ip addresses via udp or kafka 
 To run ip aggregator, just put it where you desire and run it. Process attempts to load settings (by default) from two
 locations: `/etc/ipaggregator/settings.yaml` or `~/.ipaggregator/settings.yaml`.
 
-.. code-block:: sh
+.. code-block:: bash
     > mv ./target/release/ipaggregator-rs $TO_WHEREEVER_I_WANT_IT
     > cp ./settings_test.conf.yaml ~/.ipaggregator/settings.yaml
     > vi ~/.ipaggregator/settings.yaml  # To change settings
@@ -22,7 +25,8 @@ ipaggregator-rs by default starts udp listener and udp publisher on `localhost:6
 You can change this behavior in `settings.yaml` file or using command line arguments.
 Listener and publisher can also connect to kafka message broker, but this is untested at the time.
 
-## Explained configuration:
+Explained configuration:
+========================
 
 .. code-block:: yaml
     auto_use_zeroed: true  # Automatically add octet_1.octet_2.octet_3.0/32 IPv4 address
