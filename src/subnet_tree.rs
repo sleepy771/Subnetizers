@@ -511,7 +511,7 @@ mod tests {
     }
 
     #[test]
-    fn test_LastNode_add() {
+    fn test_last_node_add() {
         let mut node = LastNode::new(0);
         assert!(!node.contains(&1));
         node.add(&[1]);
@@ -519,7 +519,7 @@ mod tests {
     }
 
     #[test]
-    fn test_LastNode__subnetize() {
+    fn test_last_node_subnetize() {
         let mut node = LastNode {
             octet: 0,
             heap: [0, 0, 0, 0, 3, 0, 0, 0],
@@ -529,7 +529,7 @@ mod tests {
     }
 
     #[test]
-    fn test_LastNode__unset_heap_bit() {
+    fn test_last_node_unset_heap_bit() {
         let mut node = LastNode {
             octet: 0,
             heap: [1, 0, 0, 0, 0, 0, 0, 0],
@@ -539,7 +539,7 @@ mod tests {
     }
 
     #[test]
-    fn test_LastNode__set_heap_bit() {
+    fn test_last_node__set_heap_bit() {
         let mut node = LastNode {
             octet: 0,
             heap: [0, 0, 0, 0, 0, 0, 0, 0],
@@ -549,7 +549,7 @@ mod tests {
     }
 
     #[test]
-    fn test_LastNode___has_subnet() {
+    fn test_last_node___has_subnet() {
         let mut node = LastNode {
             octet: 0,
             heap: [0, 0, 0, 0, 1, 0, 0, 0],
@@ -558,7 +558,7 @@ mod tests {
     }
 
     #[test]
-    fn test_LastNode_contains() {
+    fn test_last_node_contains() {
         let mut node = LastNode {
             octet: 0,
             heap: [2, 0, 0, 0, 0, 0, 0, 0],
@@ -568,7 +568,7 @@ mod tests {
     }
 
     #[test]
-    fn test_LastNode_expand() {
+    fn test_last_node_expand() {
         let mut node = LastNode::new(0);
         assert!(!node.contains(&128));
         node.expand(128);
@@ -576,7 +576,7 @@ mod tests {
     }
 
     #[test]
-    fn test_LastNode_is_subnet() {
+    fn test_last_node_is_subnet() {
         let mut node = LastNode::new(0);
         for i in 0..255 {
             node.expand(i);
@@ -621,7 +621,7 @@ mod tests {
     }
 
     #[test]
-    fn test_StandardNode__has_subnet() {
+    fn test_standard_node__has_subnet() {
         let mut node = StandardNode {
             level: 0,
             heap: [2, 0, 0, 0, 0, 0, 0, 0],
@@ -633,7 +633,7 @@ mod tests {
     }
 
     #[test]
-    fn test_StandardNode__unset_heap_bit() {
+    fn test_standard_node__unset_heap_bit() {
         let mut node = StandardNode {
             octet: 0,
             heap: [1, 0, 0, 0, 0, 0, 0, 0],
@@ -645,7 +645,7 @@ mod tests {
     }
 
     #[test]
-    fn test_StandardNode__set_heap_bit() {
+    fn test_standard_node__set_heap_bit() {
         let mut node = StandardNode {
             octet: 0,
             heap: [0, 0, 0, 0, 0, 0, 0, 0],
@@ -657,7 +657,7 @@ mod tests {
     }
 
     #[test]
-    fn test_StandardNode__subnetize() {
+    fn test_standard_node__subnetize() {
         let mut node = StandardNode {
             octet: 0,
             heap: [0, 0, 0, 0, 3, 0, 0, 0],
@@ -669,7 +669,7 @@ mod tests {
     }
 
     #[test]
-    fn test_StandardNode__is_subnet() {
+    fn test_standard_node__is_subnet() {
         // Node has subnet bit set up
         let mut node = StandardNode {
             octet: 0,
@@ -730,7 +730,7 @@ mod tests {
     }
 
     #[test]
-    fn test_StandardNode_expand() {
+    fn test_standard_node_expand() {
         let mut node = StandardNode::new(0, 0);
         assert!(!node.subnodes.contains_key(&1));
         node.expand(1);
@@ -752,7 +752,7 @@ mod tests {
     }
 
     #[test]
-    fn test_StandardNode_contains() {
+    fn test_standard_node_contains() {
         // test empty
         let mut node = StandardNode::new(0, 0);
         assert!(!node.contains(&1));
@@ -772,7 +772,7 @@ mod tests {
     }
 
     #[test]
-    fn test_StandardNode_is_subnet() {
+    fn test_standard_node_is_subnet() {
         // simple test wihtout heap
         let mut node = StandardNode::new(0, 0);
         assert!(!node.is_subnet());
@@ -806,7 +806,7 @@ mod tests {
     }
 
     #[test]
-    fn test_StandardNode_add() {
+    fn test_standard_node_add() {
         // Most important test.
         // Test add 2 octets in tree.
         let mut node = StandardNode::new(0, 0);
@@ -816,7 +816,7 @@ mod tests {
     }
 
     #[test]
-    fn test_StandardNode_add_subnet_carry_over() {
+    fn test_standard_node_add_subnet_carry_over() {
         let mut node = StandardNode::new(0, 0);
         node.add(&[0, 0]);
         node.add(&[0, 255]);
@@ -829,7 +829,7 @@ mod tests {
     }
 
     #[test]
-    fn test_StandardNode_add_multipl_heap() {
+    fn test_standard_node_add_multiple_heap() {
         let mut node = StandardNode::new(0, 0);
         for j in 0..4 {
             node.add(&[j, 0]);
