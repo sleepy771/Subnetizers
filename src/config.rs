@@ -1,8 +1,8 @@
 use serde_yaml;
 use std::fs::File;
 use std::path::Path;
-use argparse::{ArgumentParser, StoreOption, Store, Collect,};
-use log4rs::config::{Config, Appender, Logger, Root};
+use argparse::{ArgumentParser, StoreOption, Collect};
+use log4rs::config::{Config, Appender, Root};
 use log4rs::append::console::ConsoleAppender;
 use log::LevelFilter;
 
@@ -207,7 +207,7 @@ pub fn load_from_default_location(root: &Path) -> Result<Settings, String> {
 }
 
 pub fn load_from_file(path: &Path) -> Result<Settings, String> {
-    println!("Attempted load of settings from `{}`", path.display());
+    info!("Attempted load of settings from `{}`", path.display());
     if !path.exists() {
         return Err(format!("File `{}` does not exist!", path.display()));
     }

@@ -1,8 +1,6 @@
-use formatters::{AggFormatter, simple_formatter};
-use listeners::{IpSender, Listener, listener_factory, ListenerCredentials};
-use listeners::kafka::KafkaListener;
-use listeners::udp::UdpServer;
-use parsers::{simple_parser, StreamParser, nom_ip_parser};
+use formatters::{simple_formatter};
+use listeners::{Listener, listener_factory, ListenerCredentials};
+use parsers::{nom_ip_parser};
 use SETTINGS;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{channel, Receiver, Sender};

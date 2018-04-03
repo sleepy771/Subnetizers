@@ -1,7 +1,5 @@
 use formatters::AggFormatter;
-use std::net::Ipv4Addr;
 use std::net::UdpSocket;
-use std::str::FromStr;
 use std::sync::mpsc::Receiver;
 use std::time::Duration;
 

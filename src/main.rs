@@ -57,13 +57,9 @@ lazy_static! {
 }
 
 fn main() {
-    match SETTINGS.get_logger_config() {
-        Some(log4rs_cfg_path) => {
-            log4rs::init_file(log4rs_cfg_path, Default::default()).unwrap();
-        }
-        None => {
-            log4rs::init_config(default_log4rs_config()).unwrap();
-        }
+    log4rs::init_config(default_log4rs_config()).unwrap();
+    if let Some(log4rs_file_path) = SETTINGS.get_logger_config() {
+        log4rs::init_file(log4rs_file_path, Default::default()).unwrap();
     }
     let mut aggregator = IpAggregator::new();
     aggregator.start();

@@ -34,8 +34,7 @@ pub fn listener_factory(creds: ListenerCredentials, parser: StreamParser, sender
 }
 
 pub mod kafka {
-    use kafka::consumer::{Consumer, FetchOffset, GroupOffsetStorage};
-    use std::sync::mpsc::Sender;
+    use kafka::consumer::{Consumer, GroupOffsetStorage};
     use super::{IpSender, Listener, StreamParser, AggEvent};
 
     pub struct KafkaListener {
@@ -85,7 +84,6 @@ pub mod kafka {
 
 pub mod udp {
     use std::net::UdpSocket;
-    use std::sync::mpsc::Sender;
     use super::{IpSender, Listener, StreamParser, AggEvent};
 
     pub struct UdpServer {

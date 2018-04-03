@@ -1,6 +1,6 @@
 use SETTINGS;
 use std::collections::{HashMap, LinkedList};
-use std::iter::{Iterator, IntoIterator};
+use std::iter::Iterator;
 use std::ops::BitXor;
 
 
