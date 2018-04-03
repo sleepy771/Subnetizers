@@ -5,7 +5,7 @@ use ipagg::AggEvent;
 pub type IpSender = Sender<AggEvent>;
 
 pub trait Listener {
-    fn listen(&mut self);
+    fn listen(&mut self) -> Result<(), String>;
 }
 
 
@@ -15,14 +15,20 @@ pub enum ListenerCredentials {
 }
 
 pub fn listener_factory(creds: ListenerCredentials, parser: StreamParser, sender: IpSender)
-                        -> Box<Listener + 'static>
+                        -> Result<Box<Listener + 'static>, String>
 {
     match creds {
         ListenerCredentials::Kafka(hosts, topic, group) => {
-            Box::new(kafka::KafkaListener::new(hosts, topic, group, parser, sender))
+            match kafka::KafkaListener::new(hosts, topic, group, parser, sender) {
+                Ok(listener) => Ok(Box::new(listener)),
+                Err(e) => Err(e)
+            }
         }
         ListenerCredentials::UdpServer(host) => {
-            Box::new(udp::UdpServer::new(host.as_str(), parser, sender).unwrap())
+            match udp::UdpServer::new(host.as_str(), parser, sender) {
+                Ok(listener) => Ok(Box::new(listener)),
+                Err(e) => Err(e)
+            }
         }
     }
 }
@@ -41,29 +47,38 @@ pub mod kafka {
 
     impl KafkaListener {
         pub fn new(hosts: Vec<String>, topic: String, group: String,
-                   value_parser: StreamParser, sender: IpSender) -> KafkaListener {
-            KafkaListener {
-                consumer: Consumer::from_hosts(hosts)
-                    .with_topic_partitions(topic, &[0, 1])
-                    .with_fallback_offset(FetchOffset::Earliest)
-                    .with_group(group)
-                    .with_offset_storage(GroupOffsetStorage::Kafka)
-                    .create()
-                    .unwrap(),
-                value_parser,
-                sender,
+                   value_parser: StreamParser, sender: IpSender) -> Result<KafkaListener, String> {
+            match Consumer::from_hosts(hosts)
+                .with_topic_partitions(topic, &[0, 1])
+                .with_group(group)
+                .with_offset_storage(GroupOffsetStorage::Kafka)
+                .create() {
+                Ok(consumer) => Ok(KafkaListener {consumer, value_parser, sender}),
+                Err(e) => Err(format!("Kafka couldn't create consumer; Cause: {}", e))
             }
         }
     }
 
     impl Listener for KafkaListener {
-        fn listen(&mut self) -> () {
+        fn listen(&mut self) -> Result<(), String> {
             for ms in self.consumer.poll().unwrap().iter() {
                 for m in ms.messages() {
-                    let messages: Vec<[u8; 4]> = (self.value_parser)(m.value).unwrap();
-                    self.sender.send(AggEvent::ADD(messages)).unwrap();
+                    let messages: Vec<[u8; 4]> = match (self.value_parser)(m.value) {
+                        Ok(msg_vec) => msg_vec,
+                        Err(e) => {
+                            warn!("Parsing of message `{:?}` failed. Skipping ...", m.value);
+                            continue;
+                        }
+                    };
+                    match self.sender.send(AggEvent::ADD(messages)) {
+                        Ok(()) => {},
+                        Err(e) => {
+                            return Err(format!("Can not send Aggregator event via event queue; Cause: {}", e))
+                        }
+                    }
                 }
             }
+            Ok(())
         }
     }
 }
@@ -86,7 +101,7 @@ pub mod udp {
                 Ok(socket) => {
                     Ok(UdpServer { socket, sender, parser })
                 }
-                Err(err) => Err(format!("Can not start UdpServer, reason: {}", err))
+                Err(err) => Err(format!("Can not start UdpServer; Cause: {}", err))
             }
         }
 
@@ -96,20 +111,29 @@ pub mod udp {
     }
 
     impl Listener for UdpServer {
-        fn listen(&mut self) {
+        fn listen(&mut self) -> Result<(), String> {
             let mut buffer: [u8; 2048] = [0; 2048];
 
             loop {
                 match self.socket.recv_from(&mut buffer) {
                     Ok((size, addr)) => {
                         if &buffer[0..size] == "STOP!".as_bytes() {
-                            break;
+                            return Ok(())
                         }
-                        let data = (self.parser)(&buffer[0..size]).unwrap();
-                        self.sender.send(AggEvent::ADD(data)).unwrap();
+                        let data = match (self.parser)(&buffer[0..size]) {
+                            Ok(ips) => ips,
+                            Err(e) => {
+                                warn!("Parsing of message {:?} failed. Skipping ...; Cause: {}", &buffer[0..size], e);
+                                continue;
+                            }
+                        };
+                        match self.sender.send(AggEvent::ADD(data)) {
+                            Err(e) => return Err(format!("Can not send Aggregator event via event queue; Cause: {}", e)),
+                            _ => {}
+                        }
                     }
                     Err(err) => {
-                        panic!("UdpServer stoped working due to: {}", err);
+                        return Err(format!("UdpServer stopped working due to: {}", err));
                     }
                 }
             }
@@ -122,7 +146,7 @@ pub mod udp {
         use super::*;
 
         #[test]
-        fn test_UdpServer_listener() {
+        fn test_udp_server_listener() {
             use std::thread;
             use std::sync::mpsc::channel;
 
@@ -134,7 +158,7 @@ pub mod udp {
             handles.push(thread::spawn(move || {
                 let mut serv = UdpServer::new("127.0.0.1:12345", simple_parser, tx).unwrap();
                 lock_tx.send("".to_owned()).unwrap();
-                serv.listen();
+                serv.listen().unwrap();
             }));
 
             lock_rx.recv().unwrap();

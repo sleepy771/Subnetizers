@@ -7,6 +7,9 @@ extern crate serde_derive;
 extern crate serde_yaml;
 #[macro_use]
 extern crate nom;
+#[macro_use]
+extern crate log;
+extern crate log4rs;
 
 mod subnet_tree;
 mod senders;
@@ -16,8 +19,7 @@ mod parsers;
 mod listeners;
 mod formatters;
 
-use argparse::{ArgumentParser, StoreOption, StoreTrue, Store, Collect};
-use config::{load_from_default_location, load_from_file, Settings};
+use config::{load_from_default_location, load_from_file, Settings, read_cmd_line_args, default_log4rs_config};
 use ipagg::IpAggregator;
 use std::env::home_dir;
 use std::path::PathBuf;
@@ -25,55 +27,44 @@ use std::path::PathBuf;
 
 lazy_static! {
     pub static ref SETTINGS: Settings = {
-        let (optional_path, _) = read_cmd_line_args();
+        let overriding_settings = read_cmd_line_args();
         let paths = {
             let mut paths = Vec::new();
             if let Some(home_path) = home_dir() {
-                paths.push(home_path.clone().join(PathBuf::from(".ipaggregator".to_string())));
+                paths.push(home_path.clone().join(PathBuf::from(".ipaggregator".to_owned())));
             }
-            paths.push(PathBuf::from("/etc/ipaggregator".to_string()));
+            paths.push(PathBuf::from("/etc/ipaggregator".to_owned()));
             paths
         };
-        if let Some(path) = optional_path {
+        if let Some(path) = overriding_settings.get_settings_path() {
             match load_from_file(&PathBuf::from(path)) {
-                Ok(settings) => return settings,
-                Err(e) => println!("Can not load file: {}", e)
+                Ok(settings) => return settings.override_settings(overriding_settings),
+                Err(reason) => {
+                    warn!("Can not load file: {}", reason);
+                }
             }
         }
         for path in paths {
             match load_from_default_location(&path) {
-                Ok(settings) => return settings,
-                Err(reason) => println!("Can not load file: {}", reason)
+                Ok(settings) => return settings.override_settings(overriding_settings),
+                Err(reason) => {
+                    info!("Can not load file: {}", reason);
+                }
             }
         }
-        Settings::defualt()
+        Settings::default().override_settings(overriding_settings)
     };
-}
-
-fn read_cmd_line_args() -> (Option<String>, bool) {
-    let mut settings_path: Option<String> = None;
-    let mut receiver: String = "udp".to_owned();
-    let mut kafka_hosts: Vec<String> =  Vec::new();
-    let mut kafka_topic: Option<String> = None;
-    let mut kafka_group: Option<String> = None;
-    let mut udp_recv_host: Option<String> = None;
-    let mut udp_send_host: Option<String> = None;
-    {
-        let mut ap: ArgumentParser = ArgumentParser::new();
-        ap.set_description("Small uService for IPv4 Addresses aggregation in standard CIDR format.");
-        ap.refer(&mut settings_path).add_option(&["-c", "--config-path"], StoreOption, "Alternative config file path.");
-        ap.refer(&mut receiver).add_option(&["-r", "--receiver"], Store, "Receiver type. Defaults to `udp`. Possible options are [`udp`, `kafka`].");
-        ap.refer(&mut kafka_hosts).add_option(&["--kafka-hosts"], Collect, "Kafka hosts, if kafka option is specified.");
-        ap.refer(&mut kafka_topic).add_option(&["--kafka-receiver-topic"], StoreOption, "Kafka consumer topic.");
-        ap.refer(&mut kafka_group).add_option(&["--kafka-receiver-group"], StoreOption, "Kafka group.");
-        ap.refer(&mut udp_recv_host).add_option(&["--udp-receiver-host"], StoreOption, "Udp receiver host.");
-        ap.refer(&mut udp_send_host).add_option(&["--udp-send-to"], StoreOption, "Udp send to host.");
-        ap.parse_args_or_exit();
-    };
-    (settings_path, true)
 }
 
 fn main() {
+    match SETTINGS.get_logger_config() {
+        Some(log4rs_cfg_path) => {
+            log4rs::init_file(log4rs_cfg_path, Default::default()).unwrap();
+        }
+        None => {
+            log4rs::init_config(default_log4rs_config()).unwrap();
+        }
+    }
     let mut aggregator = IpAggregator::new();
     aggregator.start();
 }

@@ -44,8 +44,21 @@ impl IpAggregator {
     fn start_listener_thread(&mut self, sender: Sender<AggEvent>) {
         let bind_addr: String = SETTINGS.get_udp_bind_address().unwrap().clone();
         self.handles.push(thread::spawn(move || {
-            let mut listener = listener_factory(ListenerCredentials::UdpServer(bind_addr), nom_ip_parser, sender);
-            listener.listen();
+            match listener_factory(ListenerCredentials::UdpServer(bind_addr), nom_ip_parser, sender) {
+                Ok(ref mut listener) => {
+                    match listener.listen() {
+                        Err(e) => {
+                            error!("Listener stopped listening; Cause: {}", e);
+                            panic!();
+                        },
+                        _ => {}
+                    }
+                },
+                Err(e) => {
+                    error!("Could not create listener; Cause: {}", e);
+                    panic!();
+                }
+            }
         }));
     }
 
@@ -76,7 +89,10 @@ impl IpAggregator {
                             }
                         }
                     },
-                    Err(e) => panic!("IPTree thread paniced: {}", e)
+                    Err(e) => {
+                        error!("IPTree thread panicked: {}", e);
+                        panic!();
+                    }
                 }
             }
         }));
@@ -112,21 +128,4 @@ pub enum AggEvent {
     ADD(Vec<[u8;4]>),
     DUMP,
     TERMINATE,
-}
-
-struct EvtSender {
-    sender: Sender<AggEvent>
-}
-
-impl EvtSender {
-    fn new(sender: Sender<AggEvent>) -> EvtSender {
-        EvtSender {sender}
-    }
-
-    pub fn send(&self, data: Vec<[u8; 4]>) -> Result<(), String> {
-        match self.sender.send(AggEvent::ADD(data)) {
-            Ok(_) => {Ok(())},
-            Err(e) => Err(format!("Event sender error occurred: {}", e))
-        }
-    }
 }
