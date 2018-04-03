@@ -1,5 +1,5 @@
 use formatters::{simple_formatter};
-use listeners::{listener_factory, ListenerCredentials};
+use listeners::{listener_factory, get_credentials_from_settings};
 use parsers::{nom_ip_parser};
 use SETTINGS;
 use std::sync::mpsc::{channel, Receiver, Sender};
@@ -37,9 +37,15 @@ impl IpAggregator {
     }
 
     fn start_listener_thread(&mut self, sender: Sender<AggEvent>) {
-        let bind_addr: String = SETTINGS.get_udp_bind_address().unwrap().clone();
         self.handles.push(thread::spawn(move || {
-            match listener_factory(ListenerCredentials::UdpServer(bind_addr), nom_ip_parser, sender) {
+            let credentials = match get_credentials_from_settings(&SETTINGS) {
+                Ok(creds) => creds,
+                Err(e) => {
+                    error!("Could not get valid credentials; Cause: {}", e);
+                    panic!();
+                }
+            };
+            match listener_factory(credentials, nom_ip_parser, sender) {
                 Ok(ref mut listener) => {
                     match listener.listen() {
                         Err(e) => {

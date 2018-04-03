@@ -30,6 +30,18 @@ impl KafkaReceiver {
             self.hosts.push(host.to_owned());
         }
     }
+
+    pub fn get_hosts(&self) -> Vec<String> {
+        self.hosts.clone()
+    }
+
+    pub fn get_topic(&self) -> String {
+        self.topic.clone()
+    }
+
+    pub fn get_group(&self) -> String {
+        self.group.clone()
+    }
 }
 
 #[derive(PartialEq, Eq, Serialize, Deserialize, Debug, Clone)]
@@ -52,6 +64,18 @@ pub struct KafkaSender {
 impl KafkaSender {
     fn extend_kafka_hosts(&mut self, hosts: &[String]) {
         hosts.into_iter().for_each(|host| {self.hosts.push(host.to_owned())});
+    }
+
+    pub fn get_hosts(&self) -> Vec<String> {
+        self.hosts.clone()
+    }
+
+    pub fn get_topic(&self) -> String {
+        self.topic.clone()
+    }
+
+    pub fn get_ack_duration_seconds(&self) -> u64 {
+        self.ack_duration_seconds
     }
 }
 
@@ -102,12 +126,12 @@ impl Settings {
         self.auto_add_broadcast
     }
 
-    pub fn get_udp_bind_address(&self) -> Option<&String> {
-        self.receiver.udp_address.as_ref()
+    pub fn get_udp_bind_address(&self) -> Option<String> {
+        self.receiver.udp_address.clone()
     }
 
-    pub fn get_udp_send_to(&self) -> Option<&String> {
-        self.sender.udp_address.as_ref()
+    pub fn get_udp_send_to(&self) -> Option<String> {
+        self.sender.udp_address.clone()
     }
 
     pub fn get_publish_timer(&self) -> u32 {
@@ -116,6 +140,18 @@ impl Settings {
 
     pub fn get_logger_config(&self) -> Option<String> {
         self.log4rs_settings.clone()
+    }
+
+    pub fn get_receiver_type(&self) -> &str {
+        self.receiver.receiver.as_ref()
+    }
+
+    pub fn get_publisher_type(&self) -> &str {
+        self.sender.sender.as_ref()
+    }
+
+    pub fn get_kafka_receiver_credentials(&self) -> Option<KafkaReceiver> {
+        self.receiver.kafka.clone()
     }
 
     pub fn override_settings(mut self, settings: OverrideSettings) -> Settings {

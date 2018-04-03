@@ -1,6 +1,7 @@
 use parsers::StreamParser;
 use std::sync::mpsc::Sender;
 use ipagg::AggEvent;
+use config::Settings;
 
 pub type IpSender = Sender<AggEvent>;
 
@@ -12,6 +13,26 @@ pub trait Listener {
 pub enum ListenerCredentials {
     Kafka(Vec<String>, String, String),
     UdpServer(String),
+}
+
+pub fn get_credentials_from_settings(settings: &Settings) -> Result<ListenerCredentials, String> {
+    match settings.get_receiver_type() {
+        "udp" => {
+            match settings.get_udp_bind_address() {
+                Some(ref address) => Ok(ListenerCredentials::UdpServer(address.to_owned())),
+                None => Err("Expected udp receiver, but no address to bind specified".to_owned())
+            }
+        }
+        "kafka" => {
+            match settings.get_kafka_receiver_credentials() {
+                Some(ref kafka) => Ok(ListenerCredentials::Kafka(kafka.get_hosts(),
+                                                                 kafka.get_topic(),
+                                                                 kafka.get_group())),
+                None => Err("Expected kafka receiver, but no kafka settings specified".to_owned())
+            }
+        }
+        receiver => Err(format!("Unknown receiver type `{}` specified!", receiver))
+    }
 }
 
 pub fn listener_factory(creds: ListenerCredentials, parser: StreamParser, sender: IpSender)
