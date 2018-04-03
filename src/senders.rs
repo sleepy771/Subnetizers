@@ -2,10 +2,32 @@ use formatters::AggFormatter;
 use std::net::UdpSocket;
 use std::sync::mpsc::Receiver;
 use std::time::Duration;
+use config::Settings;
 
 pub enum PublisherCredentials {
     Udp(String),
     Kafka(Vec<String>, Duration, String),
+}
+
+
+pub fn get_publisher_credentials(settings: &Settings) -> Result<PublisherCredentials, String> {
+    match settings.get_publisher_type().as_ref() {
+        "udp" => {
+            match settings.get_udp_send_to() {
+                Some(ref address) => Ok(PublisherCredentials::Udp(address.to_owned())),
+                None => Err("Expected udp publisher, but couldn't find `send_to` address".to_owned())
+            }
+        },
+        "kafka" => {
+            match settings.get_kafka_publisher_credentials() {
+                Some(ref credentials) => Ok(PublisherCredentials::Kafka(credentials.get_hosts(),
+                                                                        Duration::new(credentials.get_ack_duration_seconds(), 0),
+                                                                        credentials.get_topic())),
+                None => Err("Expected kafka publisher, but couldn't find kafka publisher config".to_owned())
+            }
+        }
+        other => Err(format!("Unknown publisher type `{}` specified!", other))
+    }
 }
 
 

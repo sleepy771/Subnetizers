@@ -154,6 +154,10 @@ impl Settings {
         self.receiver.kafka.clone()
     }
 
+    pub fn get_kafka_publisher_credentials(&self) -> Option<KafkaSender> {
+        self.sender.kafka.clone()
+    }
+
     pub fn override_settings(mut self, settings: OverrideSettings) -> Settings {
         if let Some(ref kafka_hosts) = settings.get_kafka_hosts() {
             match self.sender.kafka {
