@@ -58,7 +58,7 @@ impl Publisher for UdpSender {
         loop {
             match self.receiver.recv() {
                 Ok(cidr_vec) => {
-                    if cidr_vec == vec![(0, 32)] {
+                    if cidr_vec == vec![(0, 33)] {
                         break;
                     }
                     for ip_string in (self.formatter)(cidr_vec) {
@@ -162,7 +162,7 @@ mod tests {
         }));
 
         tx.send(data).unwrap();
-        tx.send(vec![(0_u32, 32_u8)]).unwrap();
+        tx.send(vec![(0_u32, 33_u8)]).unwrap();
         let recv_data = udp_listener_rx.recv().unwrap();
 
         assert_eq!("192.168.2.1/32 172.16.100.1/24 10.10.1.1/16".to_string(), recv_data);
