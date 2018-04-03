@@ -7,6 +7,7 @@ Build
 =====
 
 .. code-block:: bash
+
     > git clone git@github.com:sleepy771/Subnetizers.git
     > cd Subnetizers
     > cargo build --release
@@ -15,6 +16,7 @@ To run ip aggregator, just put it where you desire and run it. Process attempts 
 locations: `/etc/ipaggregator/settings.yaml` or `~/.ipaggregator/settings.yaml`.
 
 .. code-block:: bash
+
     > mv ./target/release/ipaggregator-rs $TO_WHEREEVER_I_WANT_IT
     > cp ./settings_test.conf.yaml ~/.ipaggregator/settings.yaml
     > vi ~/.ipaggregator/settings.yaml  # To change settings
@@ -29,6 +31,7 @@ Explained configuration:
 ========================
 
 .. code-block:: yaml
+
     auto_use_zeroed: true  # Automatically add octet_1.octet_2.octet_3.0/32 IPv4 address
     auto_use_broadcast: true  # Automatically adds octet_1.octet_2.octet_3.255/32 IPv4 address
     publish_timer: 30  # How often should be aggregated result streamed.
