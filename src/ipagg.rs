@@ -1,18 +1,16 @@
 use formatters::{simple_formatter};
-use listeners::{Listener, listener_factory, ListenerCredentials};
+use listeners::{listener_factory, ListenerCredentials};
 use parsers::{nom_ip_parser};
 use SETTINGS;
-use std::sync::{Arc, Mutex};
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
-use subnet_tree::{IPTree, OctetNode};
-use senders::{Publisher, create_publisher, PublisherCredentials};
+use subnet_tree::IPTree;
+use senders::{create_publisher, PublisherCredentials};
 
 pub struct IpAggregator {
     handles: Vec<JoinHandle<()>>,
-    show_stopper: Arc<Mutex<bool>>,
 }
 
 
@@ -20,7 +18,6 @@ impl IpAggregator {
     pub fn new() -> IpAggregator {
         IpAggregator {
             handles: Vec::new(),
-            show_stopper: Arc::new(Mutex::new(false)),
         }
     }
 
@@ -113,12 +110,6 @@ impl IpAggregator {
             let mut sender = create_publisher(creds, simple_formatter, receiver).unwrap();
             sender.run_sender();
         }));
-    }
-
-    pub fn stop(&mut self) {
-        let stop_mutex = Arc::clone(&self.show_stopper);
-        let mut stop = stop_mutex.lock().unwrap();
-        *stop = true;
     }
 }
 

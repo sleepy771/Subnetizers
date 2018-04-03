@@ -65,7 +65,7 @@ pub mod kafka {
                     let messages: Vec<[u8; 4]> = match (self.value_parser)(m.value) {
                         Ok(msg_vec) => msg_vec,
                         Err(e) => {
-                            warn!("Parsing of message `{:?}` failed. Skipping ...", m.value);
+                            warn!("Parsing of message `{:?}` failed; Cause: {}. Skipping ...", m.value, e);
                             continue;
                         }
                     };
@@ -114,7 +114,7 @@ pub mod udp {
 
             loop {
                 match self.socket.recv_from(&mut buffer) {
-                    Ok((size, addr)) => {
+                    Ok((size, _)) => {
                         if &buffer[0..size] == "STOP!".as_bytes() {
                             return Ok(())
                         }

@@ -55,14 +55,15 @@ impl StandardNode {
         let inv_bit = !bit;
         self.heap[idx] &= inv_bit;
     }
-
-    fn is_heap_empty(&self) -> bool {
-        let mut heap = 0u64;
-        for i in 0..8 {
-            heap |= self.heap[i];
-        }
-        heap == 0u64
-    }
+    // TODO remove this
+//
+//    fn is_heap_empty(&self) -> bool {
+//        let mut heap = 0u64;
+//        for i in 0..8 {
+//            heap |= self.heap[i];
+//        }
+//        heap == 0u64
+//    }
 
     fn merge_subnets(&mut self, subnet: u16) {
         let mut current_subnet = subnet;
@@ -213,7 +214,7 @@ impl <'a>Iterator for MoonWalker<'a> {
             return Some((ip_address, self.mask + p_mask));
         }
 
-        let mut reassign = false;
+        let mut reassign: bool;
         match self.node_iter {
             Some(ref mut iter) => {
                 match iter.next() {
@@ -436,14 +437,6 @@ impl IPTree {
         self.octets.get_mut(&octet[0]).unwrap().add(&octet[1..]);
     }
 
-    pub fn contains(&self, octet: u8) -> bool {
-        self.octets.contains_key(&octet)
-    }
-
-    pub fn get_node(&mut self, octet: u8) -> Option<&mut Box<OctetNode>> {
-        self.octets.get_mut(&octet)
-    }
-
     pub fn walk<'a>(&'a self) -> Box<Iterator<Item=(u32, u8)> + 'a> {
         let mut iter_stack: LinkedList< Box< Iterator<Item=(u32, u8)> + 'a>> = LinkedList::new();
         for node in self.octets.values() {
@@ -465,7 +458,7 @@ impl <'a>Iterator for TreeIter<'a> {
     type Item = (u32, u8);
 
     fn next(&mut self) -> Option<(u32, u8)> {
-        let mut reassign;
+        let reassign;
         match self.cursor {
             Some(ref mut iter) => {
                 match iter.next() {

@@ -225,10 +225,6 @@ pub fn load_from_file(path: &Path) -> Result<Settings, String> {
     }
 }
 
-pub fn settings_path_exists(root: &Path) -> bool {
-    root.join(&Path::new(SETTINGS_FILE_NAME)).exists()
-}
-
 fn default_add_broadcast() -> bool {
     true
 }
