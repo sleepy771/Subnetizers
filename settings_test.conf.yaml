@@ -15,4 +15,5 @@ sender:
 #    hosts: [ localhost:9092 ]
 #    topic: ips-out
 #    ack_duration: 1
+# log4rs_settings: None
 

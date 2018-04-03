@@ -305,7 +305,7 @@ pub struct OverrideSettings {
     settings_path: Option<String>,
     logger_config: Option<String>,
     kafka_hosts: Vec<String>,
-    kafka_inboud_topic: Option<String>,
+    kafka_inbound_topic: Option<String>,
     kafka_outbound_topic: Option<String>,
     kafka_group: Option<String>,
     udp_recv_host: Option<String>,
@@ -320,7 +320,7 @@ impl OverrideSettings {
             settings_path: None,
             logger_config: None,
             kafka_hosts: Vec::new(),
-            kafka_inboud_topic: None,
+            kafka_inbound_topic: None,
             kafka_outbound_topic: None,
             kafka_group: None,
             udp_recv_host: None,
@@ -363,7 +363,7 @@ impl OverrideSettings {
     }
 
     pub fn get_kafka_inbound_topic(&self) -> Option<String> {
-        self.kafka_inboud_topic.clone()
+        self.kafka_inbound_topic.clone()
     }
 
     pub fn get_kafka_outbound_topic(&self) -> Option<String> {
@@ -379,12 +379,12 @@ pub fn read_cmd_line_args() -> OverrideSettings {
     let mut cmd_settings: OverrideSettings = OverrideSettings::default();
     {
         let mut ap: ArgumentParser = ArgumentParser::new();
-        ap.set_description("Small uService for IPv4 Addresses aggregation in standard CIDR format.");
+        ap.set_description("Small uService for IPv4 Addresses aggregation to ip ranges in CIDR format.");
         ap.refer(&mut cmd_settings.settings_path).add_option(&["-c", "--config-path"], StoreOption, "Alternative config file path.");
         ap.refer(&mut cmd_settings.receiver).add_option(&["-r", "--receiver"], StoreOption, "Receiver type. Defaults to `udp`. Possible options are [`udp`, `kafka`].");
         ap.refer(&mut cmd_settings.sender).add_option(&["-s", "--sender"], StoreOption, "Sender type. Defaults to `udp`. Possible options are [`udp`, `kafka`]");
         ap.refer(&mut cmd_settings.kafka_hosts).add_option(&["--kafka-hosts"], Collect, "Kafka hosts, if kafka option is specified.");
-        ap.refer(&mut cmd_settings.kafka_inboud_topic).add_option(&["--kafka-inbound-topic"], StoreOption, "Kafka consumer topic.");
+        ap.refer(&mut cmd_settings.kafka_inbound_topic).add_option(&["--kafka-inbound-topic"], StoreOption, "Kafka consumer topic.");
         ap.refer(&mut cmd_settings.kafka_outbound_topic).add_option(&["--kafka-outbound-topic"], StoreOption, "Kafka send_to topic");
         ap.refer(&mut cmd_settings.kafka_group).add_option(&["--kafka-receiver-group"], StoreOption, "Kafka group.");
         ap.refer(&mut cmd_settings.udp_recv_host).add_option(&["--udp-receiver-host"], StoreOption, "Udp receiver host.");
