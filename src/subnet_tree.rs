@@ -55,15 +55,6 @@ impl StandardNode {
         let inv_bit = !bit;
         self.heap[idx] &= inv_bit;
     }
-    // TODO remove this
-//
-//    fn is_heap_empty(&self) -> bool {
-//        let mut heap = 0u64;
-//        for i in 0..8 {
-//            heap |= self.heap[i];
-//        }
-//        heap == 0u64
-//    }
 
     fn merge_subnets(&mut self, subnet: u16) {
         let mut current_subnet = subnet;
